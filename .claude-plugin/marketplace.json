@@ -1,0 +1,14 @@
+{
+  "name": "character-factory-skills",
+  "description": "Claude Code skills for an end-to-end game character pipeline: brief, Tripo, Blender rig and animation, critic agents, Unity.",
+  "owner": {
+    "name": "luccacerfz"
+  },
+  "plugins": [
+    {
+      "name": "character-factory",
+      "source": "./plugins/character-factory",
+      "description": "7 skills that take a mobile-game character from a one-page brief to an animated, measured prefab in Unity."
+    }
+  ]
+}

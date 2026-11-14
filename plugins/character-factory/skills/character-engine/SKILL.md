@@ -162,6 +162,14 @@ Tudo isto é dado do manifesto — nenhum nome de personagem no C#:
   clipe, andares em arco, ataque em câmera lenta, morte → `Rebind` → vitória) — GRANIZO: `Assets/Scenes/GRANIZO_Reel.unity`.
   `Screen.width` lido pelo `execute_code` é a janela do editor, não o Game view. Peça antes de assumir o Play: o
   usuário pode estar no laboratório.
+- **Tela dividida, vários personagens no MESMO roteiro**: `CFSplitReel` (`Assets/Scenes/Factory_Split.unity`, 6 painéis
+  3×2 + faixa do passo/skill entre as linhas). Todos ficam na ORIGEM, cada um num layer próprio (24+i, também os
+  invocados via `UnitSummoned`); cada painel é uma cópia da câmera principal que vê só o seu layer + o cenário e
+  renderiza numa `RenderTexture` própria (2× e filtrada): com `Camera.rect` o `OnRenderImage` do pós-FX pega a tela
+  inteira. O OnGUI monta a grade, e o `ScreenCapture` grava tudo. Enquadre pelo tamanho do CORPO (renderers `*Body*`):
+  com props e colunas de efeito no bounds o OCASO ficava com metade do tamanho. Depois da morte, `Rebind` não devolve
+  um corpo explodido: `CFExplosion.SetBlown(false)` (o FERRUGEM sumia na vitória). Passos de duração fixa (idle 2,8 ·
+  andar 4,6 · ataque 3,2 · especial 4,4 · dano 1,7 · morte 3,1 · vitória 2,8 s) = 1.362 quadros a 60 fps em ~4 min.
 
 ## 2d. Efeitos por tipo, explosão e stun (FERRUGEM)
 

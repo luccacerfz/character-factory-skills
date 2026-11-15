@@ -216,6 +216,25 @@ All of this is manifest data — no character name in the C#:
   is built for the frame's camera: moving and rendering in the same call drew the arcs sideways, inside the sack (58%
   of the pixels vanished). To hold an instant: subscribe to the event (`Exploded += ... Time.timeScale = 0.04f`) and
   capture right after.
+- **Additive effect = `CharacterFactory/FxAdditive`** (importer): the legacy `Particles/Additive` has soft particles
+  and, at the editor's Ultra quality level, erased everything within ~1 m of depth of a surface — a seal on the floor,
+  crystals, arcs on the skin (CENTELHA r6: the whole seal vanished). Same look, without the fade. A character imported
+  before this changes on its next import.
+- **Area spell with a stun longer than the clip** (`CFSpellBuilder.BuildSpell(host, unit, spots, stun, hold, pinFx,
+  casts, killLast)` → `<HOST>_Spell.unity`, `CFSpellShow`): `CFFxHold.Bake(liveOff)` copies seal + shackles into a
+  `CFSpellArea` IN THE WORLD (each cast adds an area; none clears another; it outlives the caster; one light per area)
+  and turns the live renderers off only for the rest of the clip; `ReleaseOldest` / `Release` let go. The stun belongs
+  to the unit: `CFUnit.Stun(s, from, freeze: true)` stops the Animator and restores its speed at the end or on death.
+  `casts = 2, killLast`: the 2nd burst kills whoever is inside the seal's radius (`Damage` → `death` → `Vanish`).
+  `CFSkyRain` keeps the rain going; `CFFrameRecorder` with `cam/width/height` records the camera into a RenderTexture
+  (the Game window was in portrait). Measure the burst's whiteout AT the game camera (CENTELHA r8: > 1,000 px for
+  0.10–0.13 s).
+- **A one-shot stuck on its last frame**: `export.py` decides `hold_last_frame` by the POSE (body without effects and
+  without the `secondary.py` springs); springs away from the base pose show up in `last_frame_springs_vs_home_cm`. If a
+  clip that should return to idle comes back `hold: true` in the Unity report, read `last_frame_vs_home_bone` in the
+  manifest before touching the clip.
+- **A strike not named `attack`**: `MeasureTransitions` also treats as a strike the clip a projectile leaves from
+  (`projectiles[].clip`) — a walk→strike row with `PlayWhenPlanted` and a shared exit window.
 
 ## 2e. Feel in the engine: hit-stop, shake, varied squad, transitions tuned in the engine
 
@@ -346,6 +365,50 @@ their own RT with `RenderWithShader`.
   death / hit / victory 4–9 → 8.5–11.3 cm (the dash landing vs. home's spread paws). The hunt path (sprint → dash_bite)
   stayed at 2.1 cm because `dash_bite` brings in the new pose only in the recovery, with each paw in the air. Run
   `MeasureTransitions` and compare with the previous table on every base-pose change.
+
+## 2g. An area spell in the engine: what breaks when the game interrupts it (CENTELHA r9–r15)
+
+Scene: `CFSpellBuilder.BuildSpell(host, unit, spots, stun, hold, pinFx, casts, killLast)` → `<HOST>_Spell.unity` with
+`CFSpellShow` (schedules the casts), `CFFxHold` / `CFSpellArea` (the area held in the world), `CFSpellAim` (aiming),
+`CFSkyRain`, `CFShackleRings`, `CFSpellProbe` (per-frame proof). Order and measurements of the last round:
+`characters/centelha/review/round_r15/unity/ENGINE_R15.md`.
+
+- **Whatever replaces a live effect is born at its final colour on the SAME frame** the live one goes out (a copy with
+  a 0.12 s fade-in = −76 % gold for 1–2 frames: the "blink"). A recast replaces per PIECE (`replaceOnRecast`: the old
+  seal goes, the old shackles keep holding).
+- **A single owner of `Animator.speed`** (`CFUnit.SetBaseSpeed / HitStop / Stun`): stun and hit-stop writing the same
+  field always end with a unit frozen or sped up.
+- **Aiming a spell baked into the skeleton** (`CFSpellAim`): after the Animator, the FLOOR effect bones are carried to
+  the target without accumulating (a bone that only animates by scale has its previous offset undone first); bones that
+  fly to the area take a fraction; bones used in both places, only on the frames where the clip draws them inside the
+  area.
+- **Interruption**: a watchdog that only tests "the burst is late" (trigger + event + 0.35 s) left the seal hanging
+  1.03 s after a hit. Also test "it left the cast state" (`InCast()`: current state with the clip's name, or a
+  transition into it) — the abort lands on the next frame — and skip a caster who is DOWN (`HostDown()`, which has its
+  own path). The same for the burst → shackles window (0.233 s, read from the clip by the builder: `holdAfterBurst`).
+  Killing counts CASTS (`CastIx = max(casts, bursts)`), not bursts.
+- **Stopping a walker = letting the step finish** (`Halt`): zeroing the root at once, with `SetMoving(false)` waiting
+  for the exit window, made the legs walk in place and `PinStep` carry the unit 9–10 cm at 0.73–0.79 m/s. Keeping it
+  moving while `IsMoving`: 6.1–7.5 cm, 0.58–0.65 m/s (the rest is the `pinMaxCarry` cap = speed × 0.18 s); `walkOut`
+  0.32 s in the unit's `blend_tune.json` (0.45 didn't help).
+- **A cage only on whoever was caught** (`CFSpellAim.DecideSpots` at the burst): the bone of a spot without a target
+  goes to scale 0 in `LateUpdate` (the held copy too, `CFFxHold` bakes with the bones' scale); the next cast's `wind`
+  clears the decision. More targets than the clip's spots = a stun without a cage (declare it).
+- **Cartoon glass** (`crystal` in the manifest → `CFMat` → shader `CharacterFactory/ToonCrystal`): pass 1 `Blend
+  DstColor Zero` multiplies what is behind by lerp(1, transmission, alpha × gain); pass 2 `Blend One One` adds colour ×
+  alpha × strength + fresnel; both faces (the far one × 0.45), no ZWrite — multiply and add commute, so there is
+  nothing to sort between facets or cages. `glow` (opaque, lit, emission from the atlas) = solid light; additive =
+  light (lightning, spark, ring) and it does NOT read over light grass.
+- **Capturing in the editor**: `BakeMesh`, never `cam.Render()` after moving bones in the same call (the skin only
+  updates in the player loop). Also record at phone size (360 × 640, 30 fps): a flash that blows out at 1280 × 720 may
+  not blow out there, and an additive shackle over light bone vanishes (`CFShackleRings`: a DARK band under two light
+  rails, ≥ 3.5 px).
+- **Proof of the scene**: `CFSpellProbe` (per frame: units, seal, log; a `stop` block per unit: wait, root displacement,
+  peak speed, foot drift) + edge takes: caster killed before the burst, caster HIT (alive) before the burst, hit between
+  the burst and the shackles, a unit killed by someone else before the burst. Every take newer than every C# file (a
+  table of times + md5). After each take: Stop + `OpenScene` of the scene.
+- **A line of code swallowed by a comment**: `... // comment ... _light.enabled = false;` on a single line — the
+  compiler doesn't complain, and every unit carried a lit light from `Awake` on.
 
 ## 3. What the engine doesn't fix
 

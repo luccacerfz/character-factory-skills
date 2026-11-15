@@ -369,6 +369,74 @@ arms from frame 1 to the end. Everything lives in the clip's `free_hands` block 
 - A `step_out_of_first` of 367–381 mm on a hit/death can be an EFFECT bone (a spark born from scale 0 at the burst
   point): list the bones before hunting the "jump".
 
+## 2h. Staff caster + AREA spell (CENTELHA: `characters/centelha/anim/*.clip.json`, 15 rounds)
+
+A short mage (1.2 m) with a staff taller than her in one hand, and a spell that FALLS from the sky and pins a pack from
+below. Numbers and attempts: `docs/TECHNIQUES.md` (CENTELHA sections r4–r15).
+
+**Spell effects (`fx.py`, no character name in the code)**
+- `shock` with fixed points (`"fixed"`: left, forward, up in unit space) and points on a prop (`"snap": false`): lightning
+  "rising from the floor" = a floor link (z 0.02) → the target's knee (0.40 m on a 0.70 m target) + knee↔knee links that
+  chain the pack together. The clip's `zones` move the SAME effect around (crest + staff until the burst, the targets
+  after: 26 bones, not 52).
+- `arc_min` 0.024 m: a short arc (5–15 cm) was 5–15 mm wide, because the width scales with the length.
+- `spikes` layout `spots`: cracks from the centre of the seal to each target and crystals round each one, leaning INWARD —
+  without it the 5 targets merge into a single iceberg.
+- The spell falls from the sky in THREE beats tied to poses that already exist: the CALL (staff straight up at the top
+  of the jump: a beam rises), the STRIKE (a spear 2× faster reaches the seal ON the frame the staff stabs down) and the
+  RAIN (`kind: rain`, one impact every ~2 frames). Impact star with a cap (`star_max` 1.3): at 2.6× it hid all five
+  targets for 4 frames.
+- Colours: light = white-gold, electricity = blue [0.32, 0.58, 1.0]. A lighter blue washed to white over the additive
+  seal; pale gold at 1.5 read as ice; the staff crystal in gold read as a TORCH (cyan-white, smaller).
+- An IMPACT star at contact (`fx.impact`: `shape: "star"`, `pop: true` = born full on the contact frame, `on_top`,
+  4 frames) + light dust on the floor (`fx.slam`). It reads at 1:1, but it does NOT change the pose silhouette (contact
+  vs idle IoU 0.501 with and without it): if the critique is "the contact reads as idle", change the POSE.
+
+**The strike and the jump**
+- The strike must be the FASTEST move in the clip: the stab at 3.3 m/s in nearly equal steps lost to the swing before
+  the jump (8.2 m/s over 2 frames) — the eye reads the fastest move as the strike. Spread the wind-up (peak 4.3 m/s)
+  and hold the shaft tilted until 2 frames before contact: drops of 2.2 / 4.8 / 7.2 / 10.5 / 12.2 cm per frame,
+  4.8 m/s at contact.
+- Jump = a computed trajectory: z(t) = z0 + v·t − 0.545·t² (cm, frames at 30 fps; g = 1.09 cm/frame²), the hips carried
+  forward so the COM travels at constant speed in the air; land, THEN brake (3–4 frames); an ease-in on the contact key
+  brakes the body in mid-air.
+- One-shot end without a snap: a recovery step in the last 3 frames forced the hips back 16 cm (2.41 m/s on the last
+  frame). Step earlier (f85-87 of 96) + hips gliding back over f88-96 with ease-out: 0.49 m/s on the last frame.
+
+**Side-on game camera (55° from above)**
+- A unit in profile: up-on-screen = 0.574 × world-up + 0.819 × HER left. What goes to the far side (a hand thrown back,
+  a fist) rises in the silhouette and reads as a taller crest; what really rises yields 57 %. Use it: staff raised +
+  fist on the far side = a 100 × 70 px V (idle 85 × 47).
+- The staff on the camera side covers the face: a walking stick that leans FORWARD (spike 20 cm ahead, travelling back
+  with the floor, 9° → 25°) takes the crystal out of the outline (12–32 px outside the body).
+- Silhouette bench without an export: `blender/game_bbox.py` (`mesh` = a list: body + staff) + `cf/game_sil.py`
+  reproduce Unity's blind tiles in seconds.
+
+**Lying body and the fall**
+- Seated fall: one foot on the floor until the seat touches, with the hips accelerating frame by frame — the braking only
+  happens with support.
+- Lying limbs settle AFTER the trunk (a hand keyed to the floor together with the back held the body 6 cm in the air).
+- `"floor_resettle": true` (clip.sh) settles the trunk again AFTER the springs (cloth held above the floor lifted the seat
+  41–51 mm) and receives the bounce `hop`; `bodyfloor.py keep/keep_from` holds an already released prop in world space.
+- The lumbar hollow is the mesh PROFILE: no spine rotation brings back and head to 0 together — probe before keying. A
+  foot set too low lifts the whole body: measure each region with `ground_table.py` (`frames` as an explicit JSON list;
+  `[1..60]` fails silently and leaves the old file).
+- A toppling staff: the lowest ROTATED point goes to the floor (the spike is a cone) and, after the 2nd bounce, it rests.
+- From `release` + 3 frames on, hand × prop uses the 6 mm gate (`contact_probe.py release_open`).
+- A hand that should rest on the floor while lying: key the WRIST low at the end (13.0 → 8.8 cm wrist = hand at 2.5 cm);
+  a wrist too low (−1.5 cm) lifted the whole body 2 cm on the re-settle.
+
+**Springs, prop and arm**
+- `secondary.py rest_keys`: a rotation about the link's local X, + = FORWARD when standing (lying on her back, − lowers
+  the crest). `max_step_deg_per_frame` 18 removes the strobe (34–56°/frame). A hair chain that wilts into the head:
+  lower the peak (hair.02 60 → 47°) and check `attached_deeper_than_bind` in contacts.json.
+- Elbow vs head: compare against a CLEAN frame in head space — the elbow had not moved, the head had turned 8° in yaw.
+  Delaying the head turn: 13–15 → 3.2 mm.
+- `leg_reach` lowers the hips 2 cm during a weight shift with the foot planted: key the hips low DURING the shift.
+- The prop's twist in the fist (`weapon.edge`, weight 14) goes up to ~75°: an overshoot peak must fit that limit.
+- A clip that starts with the staff planted: LIFT the spike before moving the hand (the victory dragged the spike
+  11.5 cm over f2-11; with the wrist rising over f7-12, 0.3 cm).
+
 ## 3. The five clips
 
 | Clip | `kind` | How it is born | What to check |

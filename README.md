@@ -5,14 +5,16 @@ Claude takes it from a one-page brief to a rigged, animated, measured prefab ins
 collectible mini in the Clash Royale or Warcraft Rumble style. All the work happens live in Blender, through MCP, so
 every stage can be watched and filmed.
 
-Six characters went through the pipeline with these skills:
+Seven characters went through the pipeline with these skills:
 
 - a dwarf with a two-handed hammer;
 - an ice ogre;
 - a sword-and-shield paladin;
 - a necromancer who summons skeletons;
 - an unarmed mining automaton;
-- a wolf, the first quadruped.
+- a wolf, the first quadruped;
+- a short mage whose light-and-lightning area spell pins a pack of skeletons from below
+  ([how she was prompted](examples/centelha/PROMPT.md)).
 
 The skills grew out of what broke along the way. Each rule comes with the number that proved it.
 
@@ -50,6 +52,13 @@ Or copy `plugins/character-factory/skills/*` into your project's `.claude/skills
   - lightning between fixed points on the floor and the targets' knees;
   - `arc_min`, so short arcs keep their width on screen;
   - crystals that grow around each target.
+- **An area spell that falls from the sky (CENTELHA):** three beats tied to existing poses (the call, a spear on the
+  strike frame, a rain of impacts) and a strike that is the fastest move in the clip (4.8 m/s at contact). Two casts in
+  Unity, a cage only on the units that were caught, and watchdogs for every interruption: the caster killed, the
+  caster hit, the target killed by someone else.
+- **Cartoon crystals instead of scans:** procedural flat-faceted crystals (268 triangles per cage vs 1,600 from Tripo)
+  and cartoon glass in Unity. The glass shader multiplies the background, then adds colour + fresnel, so nothing needs
+  sorting.
 - **A lying body that floats after the springs:** secondary motion lifted a thigh 41–51 mm off the floor. The fix
   re-settles the trunk after the springs (`floor_resettle`).
 - **One idea, magnified (GRANIZO v3):** one design idea, "he IS the glacier", pushed through the model, every clip and
@@ -78,6 +87,13 @@ Or copy `plugins/character-factory/skills/*` into your project's `.claude/skills
   - an image/video API for the per-character reference videos.
 
   Keys stay in a local `.env`. The skills tell Claude never to send personal data to outside services.
+
+## Example: the prompts behind a character
+
+[`examples/centelha/PROMPT.md`](examples/centelha/PROMPT.md) has the exact prompts that built CENTELHA: one `/loop`
+request ("don't stop until the score is >= 9.5", with the round state in a JSON file), the five follow-ups sent during
+the loop and what each one became in the skills, the critic scores per round (7.62 → 8.69), and the approval that
+ended it. It ends with a template to reuse.
 
 ## Ideas worth stealing
 
@@ -110,3 +126,5 @@ vivo no Blender, via MCP.
   - elas comandam ferramentas que não estão neste repositório (`factory/cf`, `factory/blender` e o C# da Unity).
 
   Leia as skills como um manual: a ordem dos estágios, os portões com número e as lições com a medida que as provou.
+- **Exemplo de prompt:** [`examples/centelha/PROMPT.md`](examples/centelha/PROMPT.md) traz os prompts exatos (em
+  pt-BR, com tradução) que criaram a CENTELHA, do `/loop` inicial até a aprovação.

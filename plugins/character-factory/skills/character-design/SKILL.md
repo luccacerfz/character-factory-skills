@@ -122,6 +122,7 @@ Warcraft Rumble), hand-painted PBR, thick shapes, silhouette readable at 64 px, 
 | Shield: generated on its own, with a visible STRAP on the back, and big enough for the forearm to fit behind the plate with the fist in the strap (≈ 0.3 × 0.5 of the character's height) | ALVOR: the shield at its generated size left the hand outside the strap; 1.3× (0.47 × 0.73 m for 1.5 m) solved it. It is HELD in the hand, in front of the body |
 | No painted shine: ask for "matte, no painted highlights, no glow" and turn on "remove lighting" | "the light that comes from Tripo" = metal 1.0 + shine in the texture; `matte.py` removes the metal, not the painted shine |
 | Think about the grip when choosing the hand pose | palms-down bind + the top hand gripping from below = a half-turn of twist in the forearm (107–145°) |
+| A RAISING gesture with the prop above the head: arm (shoulder→wrist) ≥ 0.4 × height | CENTELHA (1.2 m): shoulder at 62 cm and an arm of ~32 cm — the crystal never got above 1.62 m; the three variants that tried it put the staff through the torso (35.5 mm) or the leg (31.2 mm). The "raise" ended up reading through the jump and the downward strike |
 
 ## 3. Tripo web (Chrome already logged in; use the `claude-in-chrome` tools)
 
@@ -221,3 +222,23 @@ asset is born from it:
   write in the brief: he looks UP with the eyes and the torso, never by throwing the head back.
 - Arm short for the torso (half shoulder width ÷ arm 0.97, rule ≤ 0.6) and hump = `overhead` 0.70,
   `corridor` 0.90, `cuff` 0.93 by design: the wind-up goes over the RIGHT shoulder, the fist works on its own side.
+
+
+## 5c. An effect that is a light OBJECT (crystal, cage, shards): Tripo vs procedural vs glass (CENTELHA r12–r14)
+
+- Tripo works for an effect asset (a GPT Image 2.5 image with an approved prop as style reference → single-image
+  "Generate 3D", 55 credits): ask for "wide clear gaps between them" and the pieces come out separate
+  (`blender/fx_asset.py parts=row` groups the loose shells: 110 shells → 5 shards); collapse decimation keeps the UVs
+  (1.96 M → 500 triangles).
+- But the user asked for "much cleaner and more cartoony" than the scan (blobs with orange veins). A cartoon crystal is
+  PROCEDURAL (`cf/fx_crystal.py`): 5–6 FLAT facets, a 3-stage taper to the tip, each face with its own vertices; a
+  256 px atlas with 3 tone bands (each facet takes a tone from the direction of a fixed light) + a light stripe on the
+  ridge. Same npz + png contract as `fx_asset.py`. Cage 268 triangles (Tripo 1,600), shard 20–44 (Tripo 500).
+- "More translucent and cartoony" = cartoon GLASS: translucent facet interior per band (alpha 0.34–0.68), an opaque
+  outline on the ridges (0.11 of the canonical tip/foot UV), a white glint; in the engine a two-pass shader (multiply
+  the background by a golden transmission, add colour + fresnel) — skill `character-engine` §2g.
+- Colour next to another character: cream disappears against the skeleton's BONE (use lemon); gold alpha over grass =
+  lime; in linear space a pale gold that is added becomes cream — use a saturated palette. Cage tips 0.20 m from the
+  target's axis (at 0.07 m they went through the skull).
+- Size on the phone: a 0.75 m cage on a 0.70 m target (tips just above the skull, ring < half the distance between
+  neighbours); rain shards of 0.48 m (0.18–0.30 m gave 8–13 px and vanished).

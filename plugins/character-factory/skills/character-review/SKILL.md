@@ -169,3 +169,28 @@ New tools and documentation can be written in parallel.
 - A fix round with no new pack and no critics does NOT have a score: report "measured, not re-evaluated".
 - From round 2 on: the critics read their own lens's previous verdict AFTER looking at the new pack and return
   `previous_issues` (resolved / partial / same / worse, with frame). Ask for NEW defects created by the fixes.
+
+
+## 4. What CENTELHA taught (critic rounds 7–13, an area spell)
+
+- **State each probe's gate in the README.** `floor_probe.py` uses 5 mm by default and the README promised −0.5 mm;
+  contact has a gate PER PAIR (`gate_mm`: body × body and prop × body 6 mm, grip 43.2, declared overlaps 50, chains
+  attached to the head 20 mm past the bind in `attached_deeper_than_bind`) and the README said "2 mm". At 0.5 mm the
+  idle failed (−1.9 mm): run with `--arg gate=0.0005` and declare it. Read EVERY list in contacts.json
+  (`attached_deeper_than_bind` held 64.2 mm and the README said "clean").
+- **The camera label comes from the scene, not from memory** (three packs said fov 30 for an fov 34 camera).
+- **An unchanged clip points to the previous pack, with proof**: a recipe older than that pack's tables + an identical
+  skin round trip in the new export. The changed clips get a new pack; the README says which is which.
+- **The changed strike gets the game camera frame by frame** (`CFGameRead.Shoot`, cast f46-96 → `game/slam/`): the
+  previous round's sheets become stale evidence.
+- **A new blind seed every round** (`cf/game_read_compose.py --seed <N>`, one tile per new pose).
+- **Spell scene**: edge takes (caster killed, hit before the burst, hit between burst and shackles, target killed by
+  someone else); `ENGINE_R<N>.md` with time + md5 of every C# / FBX / scene against every take (one critic found takes
+  older than the C#); superseded takes kept as `_old_*` and never cited; the burst's whiteout measured at the game
+  camera AND at phone size (the 3/4 view at 5.3 m gives 3–5× more white).
+- **An effect doesn't fix a silhouette**: the impact star reads, but the contact × idle IoU stayed at 0.501. If the
+  critique is "the pose reads as idle", change the pose and measure the IoU again.
+- README by script (`_sum_r<N>.py` prints every number), then 5–10 sentences checked by hand against the JSON: this
+  round 5 sentences changed (rounded spring steps, a frame range, a count of frames over the threshold).
+- The user approved halfway through the reading: stop the critics (no invented score), record it in
+  `state.json → approved` with their words and the last measured score.

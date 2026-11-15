@@ -48,6 +48,12 @@ Rules (budget per game unit; the number applies to the NEXT character):
   `SkinnedMeshRenderer`s, split by name: `Fx*`, fingers, base, props, the rest = character). Over budget: write down why
   in `state.json`.
 
+- **Eyes on a single textured mesh** (CENTELHA): Tripo gives no eyeball and no eyelid. One LEAF bone per eye (parent
+  `spine.006`), pivot 4.7 cm behind the surface, region = the eye's box with `feather` 0.007; blink = vertical scale of
+  the bone (0.08 closed, 1.1–1.25 wide open; the feathered skin stretches like an eyelid), look = 8–14° around the pivot
+  (above ~15° the whole eye moves). A box top above the brow line drags the eyebrow along. 2 bones. Clip: skill
+  `character-clips` §6b ("Eyes").
+
 ## 1. Entering the scene
 
 ```

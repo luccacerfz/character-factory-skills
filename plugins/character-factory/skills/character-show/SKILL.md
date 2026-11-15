@@ -321,3 +321,20 @@ DEATH. The eight clips show up in ~19 s, with the clip's caption on screen (`cap
 follows. The dummy's position is measured (skill `character-engine` §2f). To record: Play → `CFHunt.RestartFromTop()` +
 `CFFrameRecorder` (fixed 60 fps, capture of the Game window with the caption) → `ffmpeg`. The user's scene that was open
 before (if dirty) goes to a copy `<scene>_unsaved_<date>.unity` before `BuildHunt` — it opens a new scene.
+
+
+## 10. An area spell on a pack (`spell_show.py` ↔ `CFSpellBuilder` / `CFSpellShow`; CENTELHA × 5 OSSINHO)
+
+`spell_show.py --arg host=<HOST> --arg unit=<UNIT> --arg mode=build --arg casts=2 --arg kill=true --arg fall_stagger=10`
+- Each unit marches in its own phase and reaches ITS spot (the clip's `spots`) on the burst frame; there the pose LOCKS
+  (a 2-frame action taken from the walk at that frame) + a chest recoil (11°) and shudders that fade. Support foot
+  ≤ 0.076 cm/frame. Spots in a pentagon, 0.76 m between neighbours.
+- The stun lasts longer than the caster's clip: the show repeats a window of the cast for seal / shackles / lightning /
+  rain. PING-PONG (`[70, 82, "pp"]`) for the channel that contains a flare (looped, the gold re-exploded, +53 % in one
+  frame); rain and lightning as a plain loop (a spear going back up to the sky would read wrong).
+- Two casts: the 1st cast's effects stay pinned until the 2nd takes over each one (the seal when the new sigil lands,
+  the rest at the new burst); the 2nd kills. A pack at the same distance from the seal fell on the same frame: the delay
+  comes from the distance to the CASTER (`fall_stagger`) and the wave crosses the pack from her. Fall turn ≤ 50°.
+- Unity: `CFSpellBuilder.BuildSpell("<HOST>", "<UNIT>", "x,z;...", stun, "seal,shackles", "shackles", 2, true)` builds
+  the same scene. Engine rules (interruption, stopping on the foot, a cage per target, glass): skill `character-engine`
+  §2g. The scene's pack: skill `character-review` §4.

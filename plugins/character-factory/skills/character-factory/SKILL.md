@@ -18,7 +18,7 @@ viewport.
   read as a reference),
   `characters/ocaso/` + `characters/ossinho/` (cloaked necromancer who is NOT a humanoid + the skeleton he summons:
   planted staff, unit that rises from the ground, spell with a projectile) and `characters/toco/` (training dummy: a prop
-  that sways, dies by toppling over and respawns — not a character, no Rigify) and `characters/uivo/` (the first QUADRUPED: wolf, trimmed Rigify wolf rig, canter and dash timed to the user's video, gallop, pounce with a shake, sitting howl; `quad_build.sh`).
+  that sways, dies by toppling over and respawns — not a character, no Rigify) and `characters/uivo/` (the first QUADRUPED: wolf, trimmed Rigify wolf rig, canter and dash timed to the user's video, gallop, pounce with a shake, sitting howl; `quad_build.sh`) and `characters/centelha/` (a short mage with a ONE-handed staff: living eyes on a single mesh, an AREA spell that falls from the sky and pins a pack from below, glass crystals, a Unity scene with two casts and edge cases; 15 rounds in a `/loop` until the user approved — `loop.json`; the original request is in `loop.json → user_request`, and this repo's `examples/centelha/PROMPT.md`).
 
 ## The order, and the exit gate of each stage
 
@@ -101,6 +101,11 @@ at 1.30 s, 23 frames from apex to contact; FERRUGEM carries 103 effect bones).
 
 ## Factory state and memory
 
+- **Loop until a score** (`/loop ... don't stop until score >= 9.5`): the rounds' state lives in
+  `characters/<id>/loop.json` (plan, progress, scores per lens, what was measured); each round = measured fixes → pack
+  → 3 critics → weighted score → `ScheduleWakeup`. A new user request in the middle (crystals "cleaner", "more
+  translucent") becomes a round of its own, recorded and shown to the next critics. Stop when the user approves, even
+  below the score.
 - When you close a stage, update `characters/<id>/state.json` (`updated`, what was done, the gate numbers, `next`).
   That is how a new session resumes the work.
 - A new lesson (something that took more than one attempt) goes into `docs/TECHNIQUES.md` with the **measured number**

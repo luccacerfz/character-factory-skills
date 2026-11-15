@@ -1,339 +1,353 @@
 ---
 name: character-engine
-description: Levar um personagem da Character Factory para a engine — export FBX com nomes Mixamo, LODs e manifesto de contrato, cópia para a Unity, import automático (materiais, clipes com eventos, efeitos aditivos, Animator, prefab), invocador com o prefab das unidades (CFSummoner), ataque à distância (projéteis e evento land), prop que balança e morre (boneco de treino — CFWobble, tabela de queda), medição dentro da Unity e transições sem pé patinando (PinStep, WalkPinStep). Use quando o usuário pedir "exporta", "manda para a Unity", "FBX", "importa na engine", "o pé escorrega na transição", ao fechar os clipes de um personagem, ou ao levar um alvo de treino / invocador para a engine. Inclui o "sentir" na engine: hit-stop, tremor de câmera no golpe, variação de bando e transições do Animator afinadas no motor e salvas por personagem (blend_tune.json).
+description: Take a Character Factory character into the engine — FBX export with Mixamo names, LODs and a contract manifest, copy to Unity, automatic import (materials, clips with events, additive effects, Animator, prefab), summoner with the units' prefab (CFSummoner), ranged attack (projectiles and the land event), a prop that wobbles and dies (training dummy — CFWobble, topple table), measurement inside Unity and transitions without foot sliding (PinStep, WalkPinStep). Use when the user asks to "export", "send it to Unity", "FBX", "import into the engine", "the foot slides in the transition", when closing out a character's clips, or when taking a training target / summoner into the engine. Includes the "feel" in the engine: hit-stop, camera shake on the strike, squad variation and Animator transitions tuned in the engine and saved per character (blend_tune.json).
 ---
 
 # Engine: export + Unity
 
-Regras de operação: skill `character-factory`. Detalhes do contrato: `factory/README.md` ("Engine (Unity)").
+Operating rules: skill `character-factory`. Contract details: `factory/README.md` ("Engine (Unity)").
 
 ## 1. Export
 
 ```
-python3 cf/bl.py run blender/lod_show.py --arg name=<NAME> --arg mode=hero     # exportar sempre com a malha hero à mostra
-python3 cf/bl.py run blender/lit_gain.py --arg name=<NAME>                      # se tem fumaça/poeira/vapor: o brilho que a luz dá a ela
+python3 cf/bl.py run blender/lod_show.py --arg name=<NAME> --arg mode=hero     # always export with the hero mesh showing
+python3 cf/bl.py run blender/lit_gain.py --arg name=<NAME>                      # if it has smoke/dust/steam: the brightness the light gives it
 python3 cf/bl.py run blender/export.py --arg name=<NAME> --arg 'clips=["idle","walk","attack","hit","death"]' \
-        --arg out=$PWD/characters/<id>/export/<NAME>.fbx                         # `clips` e `out` são obrigatórios
-python3 cf/to_unity.py characters/<id>/export ../Assets                      # cria Assets/Characters/<NAME>
+        --arg out=$PWD/characters/<id>/export/<NAME>.fbx                         # `clips` and `out` are required
+python3 cf/to_unity.py characters/<id>/export ../Assets                      # creates Assets/Characters/<NAME>
 ```
 
-Saída: `characters/<id>/export/<NAME>.fbx` + `<NAME>.json` (manifesto): esqueleto limpo com nomes Mixamo, no máximo 4
-influências, corpo LOD0/LOD1, cada prop como malha própria em um osso, clipes como strips NLA, eventos, convenção de
-ciclo (período + 1 quadros), `ground_speed_m_s`, `enter_phase` / `leave_phase`, `stance_yaw_deg`.
+Output: `characters/<id>/export/<NAME>.fbx` + `<NAME>.json` (manifest): clean skeleton with Mixamo names, at most 4
+influences, body LOD0/LOD1, each prop as its own mesh on one bone, clips as NLA strips, events, cycle convention
+(period + 1 frames), `ground_speed_m_s`, `enter_phase` / `leave_phase`, `stance_yaw_deg`.
 
-O manifesto também leva: `fx` (malhas de efeito, material `"blend": "additive"` + `strength` = a emissão aprovada no
-Blender; o importador usa o shader aditivo de partícula e multiplica a tinta), `matte` por material (o `to_unity.py`
-assa no metal/suavidade) e, para arma de uma mão, `hand_prop`. Os ossos de efeito (`Fx*`) ficam sob a raiz e animam
-por escala: o importador liga `updateWhenOffscreen` e tira sombra desses renderers.
+The manifest also carries: `fx` (effect meshes, material `"blend": "additive"` + `strength` = the emission approved in
+Blender; the importer uses the additive particle shader and multiplies the tint), `matte` per material (`to_unity.py`
+bakes it into metallic/smoothness) and, for a one-handed weapon, `hand_prop`. The effect bones (`Fx*`) sit under the root
+and animate by scale: the importer turns on `updateWhenOffscreen` and turns off shadows on those renderers.
 
-Conferir no relatório do export:
-- `round_trip.meshes_missing_in_file` vazio (um objeto com `hide_select` era pulado sem aviso pelo exportador por
-  seleção: a aura do ALVOR ficou fora do FBX e a Unity recusou o import);
-- ida e volta do FBX ≤ 0,05 cm em todo osso e todo quadro (o bake decompõe cada osso contra o pai reconstruído; sem
-  isso a escala não uniforme do Rigify cisalha 6–8 mm nos dedos);
-- **ida e volta da PELE** (`round_trip.skin_round_trip`, por clipe): `max_cm` ≤ 0,5 e `file_lowest_cm` ≥ −0,3. A junta
-  exata não diz nada de uma bota 20 cm abaixo dela: o FERRUGEM passou na ida e volta das juntas (0,021 cm) e na sonda
-  de chão do Blender, e a Unity mostrou a bota 1,16 cm DENTRO do piso. Causa: pai com escala não uniforme (o estica do
-  IK do Rigify) + filho girado = cisalhamento, que TRS não guarda. O bake agora faz os PAIS semelhança no mundo (ou
-  (a, b, a) quando os filhos só torcem — decidido por clipe) e só as folhas guardam escala por eixo
-  (`skin_fit.parents_axial`, `parent_anisotropy_dropped`, `parent_skin_worst_cm` no relatório). Um squash por ESCALA
-  chaveado de propósito num osso com filhos apareceria em `parent_anisotropy_dropped` — chaveie-o numa folha;
-- personagem com rig ANTERIOR à regra "sem B-bones" do `rig_build.py` (GRANIZO): conte os ossos de deformação com
-  `bbone_segments > 1` ANTES do export e zere para 1 — a ida e volta das juntas passa (0,004 cm) e a da pele falha
-  por 9,6–15,9 cm (torção ao longo do osso não move cabeça nem ponta); depois disso, re-meça `./contacts.sh`;
-- efeito de CHÃO não é projétil: só `cf_fx_*` com `lands` (bolt / hex) vira `projectiles` (que o
-  `CFProjectileRetarget` puxa para a linha do alvo). Os `spikes` do GRANIZO v3 (rachadura + cristais) vão para
-  `ground_fx` + evento `<fx>_arrive` (ataque 29 = `hit`); antes o export quebrava com `KeyError: 'lands'`;
-- `height_m` igual à altura da malha de bind (lida de `mesh.vertices`; `bound_box` é a malha posada);
-- o prop exportado está onde o `weapon.grip` diz.
+Check in the export report:
+- `round_trip.meshes_missing_in_file` empty (an object with `hide_select` used to be skipped silently by the
+  selection-based exporter: ALVOR's aura was left out of the FBX and Unity refused the import);
+- FBX round trip ≤ 0.05 cm on every bone and every frame (the bake decomposes each bone against the rebuilt parent;
+  without that, Rigify's non-uniform scale shears the fingers by 6–8 mm);
+- **SKIN round trip** (`round_trip.skin_round_trip`, per clip): `max_cm` ≤ 0.5 and `file_lowest_cm` ≥ −0.3. An exact
+  joint says nothing about a boot 20 cm below it: FERRUGEM passed the joint round trip (0.021 cm) and Blender's floor
+  probe, and Unity showed the boot 1.16 cm INSIDE the floor. Cause: a parent with non-uniform scale (Rigify's IK
+  stretch) + a rotated child = shear, which TRS cannot store. The bake now makes the PARENTS similarity transforms in
+  world space (or (a, b, a) when the children only twist — decided per clip) and only the leaves keep per-axis scale
+  (`skin_fit.parents_axial`, `parent_anisotropy_dropped`, `parent_skin_worst_cm` in the report). A SCALE squash keyed
+  on purpose on a bone with children would show up in `parent_anisotropy_dropped` — key it on a leaf;
+- a character whose rig PREDATES the "no B-bones" rule of `rig_build.py` (GRANIZO): count the deform bones with
+  `bbone_segments > 1` BEFORE the export and set them to 1 — the joint round trip passes (0.004 cm) and the skin one
+  fails by 9.6–15.9 cm (twist along the bone moves neither head nor tail); after that, re-measure `./contacts.sh`;
+- a FLOOR effect is not a projectile: only `cf_fx_*` with `lands` (bolt / hex) becomes `projectiles` (which
+  `CFProjectileRetarget` pulls onto the target line). GRANIZO v3's `spikes` (crack + crystals) go to
+  `ground_fx` + the `<fx>_arrive` event (attack 29 = `hit`); before, the export broke with `KeyError: 'lands'`;
+- `height_m` equal to the height of the bind mesh (read from `mesh.vertices`; `bound_box` is the posed mesh);
+- the exported prop is where `weapon.grip` says.
 
 ## 2. Unity
 
-Instância: Unity 6 + MCP for Unity (ver memória `characterfactory-unity-mcp`). Depois do `to_unity.py`:
+Instance: Unity 6 + MCP for Unity (everything runs in the open editor; `execute_code` compiles C# 6). After `to_unity.py`:
 `refresh_unity` (mode force, scope assets) → `execute_code`:
-`return CharacterFactory.EditorTools.CFImporter.Import("Assets/Characters/<NAME>");` (o nome completo do namespace é
-obrigatório no compilador C# 6 do MCP; menu equivalente: *Character Factory ▸ Import All Characters*). Para capturar:
-`CFImporter.BuildShowcase(dir)` primeiro (cria `Assets/Scenes/<NAME>_Showcase.unity` e ABRE essa cena no lugar da
-atual), depois `CFImporter.Capture(dir, clip, t, "Captures/x.png", w, h, camPos, lookAt, fov, -1)`.
+`return CharacterFactory.EditorTools.CFImporter.Import("Assets/Characters/<NAME>");` (the fully qualified namespace is
+required by the MCP's C# 6 compiler; equivalent menu: *Character Factory ▸ Import All Characters*). To capture:
+`CFImporter.BuildShowcase(dir)` first (creates `Assets/Scenes/<NAME>_Showcase.unity` and OPENS that scene in place of
+the current one), then `CFImporter.Capture(dir, clip, t, "Captures/x.png", w, h, camPos, lookAt, fov, -1)`.
 
-- **Antes do `refresh_unity`, leia `mcpforunity://editor/state`**: se `play_mode.is_playing` (sessão do usuário, ex.
-  `Duel_Arena`), NÃO importe — o refresh reimporta o FBX e regenera prefab/Animator de um personagem que está em cena.
-  Rode só o `to_unity.py` (copia os arquivos) e deixe `Import` + `MeasureTransitions` como pendência no `state.json`
-  (GRANIZO v3, 2026-11-14).
-- Rig **Generic**: o Humanoid mapeia sozinho com nomes Mixamo, mas a reprodução em músculos desvia centímetros e solta
-  a pegada de duas mãos; o importador mede e decide.
-- Animator: repouso = estado padrão; marcha = bool com `offset = enterPhase`; one-shots = triggers; duração da
-  transição pela ORIGEM (repouso 0,06 s, marcha 0,15 s, one-shot 0,08 s — padrões; afináveis por personagem no
-  laboratório, `<NAME>.blend_tune.json`, §2e); prioridade morte → dano → ataque → marcha;
-  a morte segura o último quadro.
-- Saída da marcha: `CFCharacter.PinStep` prende o pé de apoio e move a unidade no lugar dele, com teto
-  (`pinMaxCarry` = velocidade × 0,18 s). No toque do calcanhar a bola do pé ainda está no ar: teste o tornozelo; com
-  os dois no chão vale o pé da frente. Sem teto a unidade dá um bote de até 31 cm.
-- Parar no pé certo: rode `CFImporter.MeasureTransitions(dir)` DEPOIS de cada `Import` — ele mede a patinação por
-  fase, grava a janela de saída no prefab (`leaveFrom/leaveTo/maxPhaseWait`) e mede de novo com a parada esperando
-  (`CFCharacter.SetMoving(false)` + `StopStep`). O jogo move a unidade enquanto `IsMoving` e pode pedir a parada quando
-  faltar `StopDistance` até o destino. ALVOR: 13,6 / 36,6 cm (média / pior) → 0,9 / 4,7 cm; espera até 0,72 s.
-  Personagens importados antes (janela 0/0) não esperam: comportamento antigo.
-- **Atacar no pé certo**: `CFCharacter.PlayWhenPlanted("attack")` espera a mesma janela (a unidade segue andando
-  enquanto `IsMoving`), depois dispara o gatilho e prende o pé de apoio. ALVOR, 28 fases: andar→ataque 12,2 / 36,0 cm
-  (média / pior) → 2,4 / 4,0 cm; espera até 0,68 s (média 0,26 s). `Play` continua sendo o disparo imediato — use-o
-  para reações (dano, morte). Quem avança o Animator à mão chama `PlayStep(dt)` depois de cada `Animator.Update`.
-  `Play` também CANCELA um golpe pendente (um dano durante a espera disparava o ataque por cima da reação — achado
-  por um crítico lendo o C#): toda ação adiada precisa de quem a cancele, e de uma linha no `MeasureTransitions`.
-  O histórico do `execute_code` some a cada recompilação. Capturas do pacote (ALVOR, 560×460, fov 34): câmera de jogo
-  `camPos (1.3, 3.1, 2.6)` → `lookAt (-0.15, 0.45, -0.35)`; lateral baixa `(-3.6, 0.75, -0.3)` → `(0, 0.5, -0.45)`;
-  tempos idle 2,05 · walk 0,3 · attack 0,5 / 0,8 · hit 0,2 · death 0,25 / 0,6 / 1,2 / 1,45 / 1,95 s; repita com
-  `forceLod` 1 para a linha de LOD1.
-- O `execute_code` do MCP compila C# 6 (sem funções locais nem tuplas). O Play mode não avança com a Unity em segundo
-  plano: avance `Animator.Update` à mão para medir.
+- **Before `refresh_unity`, read `mcpforunity://editor/state`**: if `play_mode.is_playing` (the user's session, e.g.
+  `Duel_Arena`), do NOT import — the refresh reimports the FBX and regenerates the prefab/Animator of a character that
+  is in the scene. Run only `to_unity.py` (copies the files) and leave `Import` + `MeasureTransitions` as pending in
+  `state.json` (GRANIZO v3, 2026-11-14).
+- **Generic** rig: Humanoid maps on its own with Mixamo names, but muscle-space playback drifts by centimeters and
+  loosens the two-handed grip; the importer measures and decides.
+- Animator: rest = default state; gait = bool with `offset = enterPhase`; one-shots = triggers; transition duration
+  set by the SOURCE (rest 0.06 s, gait 0.15 s, one-shot 0.08 s — defaults; tunable per character in the
+  lab, `<NAME>.blend_tune.json`, §2e); priority death → hit → attack → gait;
+  death holds the last frame.
+- Leaving the gait: `CFCharacter.PinStep` pins the planted foot and moves the unit in its place, with a cap
+  (`pinMaxCarry` = speed × 0.18 s). At heel strike the ball of the foot is still in the air: test the ankle; with
+  both on the floor, the front foot counts. Without the cap the unit lunges up to 31 cm.
+- Stopping on the right foot: run `CFImporter.MeasureTransitions(dir)` AFTER every `Import` — it measures sliding per
+  phase, writes the exit window into the prefab (`leaveFrom/leaveTo/maxPhaseWait`) and measures again with the stop
+  waiting (`CFCharacter.SetMoving(false)` + `StopStep`). The game moves the unit while `IsMoving` and may request the
+  stop when `StopDistance` remains to the destination. ALVOR: 13.6 / 36.6 cm (mean / worst) → 0.9 / 4.7 cm; waits up
+  to 0.72 s. Characters imported earlier (window 0/0) don't wait: old behavior.
+- **Attacking on the right foot**: `CFCharacter.PlayWhenPlanted("attack")` waits for the same window (the unit keeps
+  walking while `IsMoving`), then fires the trigger and pins the planted foot. ALVOR, 28 phases: walk→attack 12.2 /
+  36.0 cm (mean / worst) → 2.4 / 4.0 cm; waits up to 0.68 s (mean 0.26 s). `Play` is still the immediate fire — use it
+  for reactions (hit, death). Whoever advances the Animator by hand calls `PlayStep(dt)` after each `Animator.Update`.
+  `Play` also CANCELS a pending strike (a hit during the wait fired the attack on top of the reaction — found by a
+  critic reading the C#): every deferred action needs something that cancels it, and a row in `MeasureTransitions`.
+  The `execute_code` history is lost on every recompile. Package captures (ALVOR, 560×460, fov 34): game camera
+  `camPos (1.3, 3.1, 2.6)` → `lookAt (-0.15, 0.45, -0.35)`; low side `(-3.6, 0.75, -0.3)` → `(0, 0.5, -0.45)`;
+  times idle 2.05 · walk 0.3 · attack 0.5 / 0.8 · hit 0.2 · death 0.25 / 0.6 / 1.2 / 1.45 / 1.95 s; repeat with
+  `forceLod` 1 for the LOD1 row.
+- The MCP's `execute_code` compiles C# 6 (no local functions or tuples). Play mode doesn't advance with Unity in the
+  background: advance `Animator.Update` by hand to measure.
 
-Segundo personagem (GRANIZO): export + cópia + import + showcase + capturas rodaram sem tocar em código — o contrato
-é o manifesto, não o personagem.
+Second character (GRANIZO): export + copy + import + showcase + captures ran without touching code — the contract
+is the manifest, not the character.
 
-Leia `bodyMinYCm` do relatório da Unity (o ponto mais baixo do corpo em todos os clipes): abaixo de −0,5 cm há algo
-dentro do chão — volte ao `./contacts.sh` (linha `floor`). No ALVOR esse número (−6,0) achou o que nenhum render mostrava.
-`bodyMinYCm` lê só o corpo, nos quadros de sonda. O relatório também traz `floor[]` — o ponto mais baixo de CADA
-renderer (corpo, LOD1, arma, escudo; efeito não) em TODOS os quadros de todos os clipes, com clipe e quadro — e
-`floorMinYCm` / `floorWorst`; abaixo de −1 cm vira `problems`. Foi o que faltava quando a espada solta do ALVOR
-ficou 1,7 cm dentro do piso por 49 quadros da morte: o corpo estava limpo, a arma ninguém media.
+Read `bodyMinYCm` from the Unity report (the lowest point of the body across all clips): below −0.5 cm something is
+inside the floor — go back to `./contacts.sh` (the `floor` row). On ALVOR this number (−6.0) found what no render showed.
+`bodyMinYCm` reads only the body, on the probe frames. The report also carries `floor[]` — the lowest point of EACH
+renderer (body, LOD1, weapon, shield; not effects) on ALL frames of all clips, with clip and frame — and
+`floorMinYCm` / `floorWorst`; below −1 cm it becomes `problems`. That was what was missing when ALVOR's dropped sword
+sat 1.7 cm inside the floor for 49 frames of the death: the body was clean, nobody was measuring the weapon.
 
-Portão: `import ok=True problems=[]`, `bodyMinYCm` ≥ −0,5, sequência do controlador correta (morte ignora gatilhos seguintes), e a tabela
-de pé plantado por transição gravada (`unity_transitions*.json`). Capture a câmera de jogo para o pacote de revisão.
+Gate: `import ok=True problems=[]`, `bodyMinYCm` ≥ −0.5, correct controller sequence (death ignores later triggers), and
+the planted-foot-per-transition table saved (`unity_transitions*.json`). Capture the game camera for the review package.
 
-## 2b. Unidade que sai do chão, invocador, ataque à distância (OCASO + OSSINHO)
+## 2b. Unit that rises out of the ground, summoner, ranged attack (OCASO + OSSINHO)
 
-Tudo isto é dado do manifesto — nenhum nome de personagem no C#:
+All of this is manifest data — no character name in the C#:
 
-- **`sink` por clipe** (`export.py` lê `cf_sink` da action; `to_unity.py` → `clips[].sink`): o piso DA unidade, por quadro
-  (−0,74 m no 1º quadro do `spawn`). O portão de chão e o `bodyMinYCm` descontam esse piso — sem isso um esqueleto
-  enterrado de propósito reprova por 74 cm. A raiz já desce no clipe; o `sink` é só o gabarito do juiz.
-- **`hold_last_frame` = "não termina na pose-base"** (`last_frame_vs_home_cm` ≥ 1), não "último ≠ primeiro": o `spawn`
-  começa enterrado e termina em pé — tem de entregar para o idle. A comparação com a pose-base **ignora ossos de efeito**
-  (`DEF-fx_*`): o raio parado a 3 m no fim do ataque dizia "não voltou" e o ataque congelava (297,9 cm → 0,65 cm).
-- **`summon`** (`rig/landmarks.json → summon` → manifesto → `CFSummoner` no prefab): prefab da unidade
-  (`Assets/Characters/<UNIT>/<UNIT>.prefab` — **importe a unidade ANTES do invocador**, senão vira `problems`), evento do
-  clipe, clipe de `spawn`, pontos `[esq, frente]` → local `(−esq, 0, frente)` (a unidade olha +Z). No evento, uma unidade
-  por ponto, a segunda `stagger` depois, viradas `turnOutDeg` para fora; `maxAlive` dispensa as antigas (`dismissClip`).
-  Confira três coisas: ponto = osso da coluna de efeito (`FxRise*Ring`, erro 0 no OCASO); no quadro em que a unidade
-  passa a existir o corpo inteiro está abaixo do chão (topo −15 cm); do `ready` em diante o ponto mais baixo ≥ −0,5 cm.
-- **Animator que acabou de nascer não escreve pose**: com `CullUpdateTransforms` um renderer nunca desenhado conta como
-  invisível — `Play(spawn); Update(0)` andava a máquina de estados e deixava a unidade EM PÉ por um quadro (topo +67 cm
-  medido). O `CFSummoner.SpawnAt` troca para `AlwaysAnimate` só nessa avaliação. Vale para qualquer coisa instanciada
-  já em pose.
-- **`ranged`** (efeito `kind: "bolt"` com `target` nos landmarks): no evento `hit` o projétil SAI; `impactPointLocal`
-  vira o alvo e `projectileSpeed` a velocidade (OCASO: (0, 0,55, 3,2) m a 16,5 m/s; o osso do raio chega 5 quadros
-  depois). O showcase não solta poeira no chão e treme a câmera na chegada.
-- **"Pé no chão" sai dos pés do personagem**: `plantedBallHeight / plantedAnkleHeight` = altura em repouso + 1/5 do que
-  o andar levanta o pé (6–15 mm), com os 4,5 / 10,5 cm antigos como TETO. Num mini de 0,70 m o tornozelo nunca passa
-  de 8,7 cm: os dois pés liam como plantados o ciclo todo, o pino segurava o pé que balança e a tabela "media"
-  15,8 / 22,2 cm de patinação (real: 3,4 / 4,1). Se a tabela de transições de um personagem pequeno vier absurda, leia
-  `plantedBallCm / plantedAnkleCm / footLiftCm` no relatório antes de mexer no clipe.
-- `BuildShowcase` de um invocador: sequência `summon` → ataque, câmera afastada pelo alcance dos pontos, `maxAlive` =
-  nº de pontos. Para conferir o gatilho real entre em Play (`manage_editor play`) e leia `Time.frameCount`,
-  `CFSummoner.Units` e os estados por `execute_code`: nesta máquina o Play avançou sem foco (1.610 quadros em 9 s);
-  se `frameCount` não andar, ligue `Application.runInBackground` e, em último caso, avance `Animator.Update` à mão.
+- **`sink` per clip** (`export.py` reads `cf_sink` from the action; `to_unity.py` → `clips[].sink`): the unit's OWN
+  floor, per frame (−0.74 m on the 1st frame of `spawn`). The floor gate and `bodyMinYCm` discount that floor — without
+  it, a skeleton buried on purpose fails by 74 cm. The root already descends in the clip; `sink` is only the judge's gauge.
+- **`hold_last_frame` = "does not end in the base pose"** (`last_frame_vs_home_cm` ≥ 1), not "last ≠ first": `spawn`
+  starts buried and ends standing — it has to hand off to idle. The comparison with the base pose **ignores effect
+  bones** (`DEF-fx_*`): the bolt parked 3 m away at the end of the attack said "didn't return" and the attack froze
+  (297.9 cm → 0.65 cm).
+- **`summon`** (`rig/landmarks.json → summon` → manifest → `CFSummoner` on the prefab): the unit's prefab
+  (`Assets/Characters/<UNIT>/<UNIT>.prefab` — **import the unit BEFORE the summoner**, otherwise it becomes `problems`),
+  clip event, `spawn` clip, points `[esq, frente]` (left, forward) → local `(−esq, 0, frente)` (the unit faces +Z). On
+  the event, one unit per point, the second one `stagger` later, turned `turnOutDeg` outward; `maxAlive` dismisses the
+  old ones (`dismissClip`). Check three things: point = effect column bone (`FxRise*Ring`, error 0 on OCASO); on the
+  frame the unit comes into existence, the whole body is below the floor (top −15 cm); from `ready` on, the lowest
+  point ≥ −0.5 cm.
+- **A freshly born Animator doesn't write a pose**: with `CullUpdateTransforms`, a renderer that was never drawn counts
+  as invisible — `Play(spawn); Update(0)` advanced the state machine and left the unit STANDING for one frame (top
+  +67 cm measured). `CFSummoner.SpawnAt` switches to `AlwaysAnimate` for that one evaluation only. This applies to
+  anything instantiated already posed.
+- **`ranged`** (effect `kind: "bolt"` with `target` in the landmarks): on the `hit` event the projectile LEAVES;
+  `impactPointLocal` becomes the target and `projectileSpeed` the speed (OCASO: (0, 0.55, 3.2) m at 16.5 m/s; the bolt
+  bone arrives 5 frames later). The showcase spawns no dust on the floor and shakes the camera on arrival.
+- **"Foot on the floor" comes from the character's own feet**: `plantedBallHeight / plantedAnkleHeight` = rest height +
+  1/5 of how far the walk lifts the foot (6–15 mm), with the old 4.5 / 10.5 cm as a CAP. On a 0.70 m mini the ankle
+  never goes above 8.7 cm: both feet read as planted for the whole cycle, the pin held the swinging foot and the table
+  "measured" 15.8 / 22.2 cm of sliding (real: 3.4 / 4.1). If a small character's transition table comes out absurd,
+  read `plantedBallCm / plantedAnkleCm / footLiftCm` in the report before touching the clip.
+- `BuildShowcase` for a summoner: sequence `summon` → attack, camera pulled back by the reach of the points, `maxAlive`
+  = number of points. To check the real trigger, enter Play (`manage_editor play`) and read `Time.frameCount`,
+  `CFSummoner.Units` and the states via `execute_code`: on this machine Play advanced without focus (1,610 frames in
+  9 s); if `frameCount` doesn't advance, turn on `Application.runInBackground` and, as a last resort, advance
+  `Animator.Update` by hand.
 
-## 2c. Alvo que balança e o treino (TOCO + OCASO + OSSINHO)
+## 2c. Target that wobbles, and training (TOCO + OCASO + OSSINHO)
 
-- Prop que é atingido (boneco de treino, totem, estandarte) NÃO é personagem: `blender/wobble_rig.py` (ossos em pé, pesos por
-  altura) → `blender/export_prop.py` (FBX sem clipes + manifesto `kind: wobble`, molas, `target`) → `cf/to_unity.py` →
-  `CFImporter.Import(dir)` desvia para `ImportWobble`: rig Generic SEM Animator (com "None" a Unity importa a malha rígida:
-  0 triângulos skinados), `CFWobble` no root com as MESMAS molas do `wobble.py`. Relatório: altura, tris, piso, `targetLocal`
-  (+Z = o lado pintado; o importador reprova se não for).
-- Projétil assado na animação (bolt / hex do `fx.py`): o `export.py` transforma o voo gravado na ação (`cf_fx_<fx>`) em evento
-  `land` no quadro do estouro e o manifesto ganha `projectiles` (clipe, fx, quadro de saída e de pouso, alvo, arco). O jogo
-  chuta o alvo no `land`, não no `hit` (no `hit` o projétil SAI). O alvo fica onde o projétil estoura: eixo = alvo do
-  projétil + a profundidade do disco (`BuildTraining` lê os dois).
-- `CFImporter.BuildTraining(hostDir, targetDir)` → `Assets/Scenes/<HOST>_Training.unity` com `CFTraining` (patrulha,
-  invocação, magias, golpes, vida do alvo, erguer um invocado do corpo). As REGRAS da rodada (vagas, faixa de queda,
-  `stopLead`, `unitLead`, vida, anel cheio), a câmera e a prova com `CFRoundProbe` estão na skill `character-show` §7 — ela
-  é o espelho do `blender/training_show.py`.
-- O que é contrato de import (e mora aqui): `wobble.topple` no manifesto (o `to_unity.py` achata `dirs` em colunas
-  `deg / r / k2 / rest`: o `JsonUtility` não lê array aninhado) e o importador soma 180° ao ângulo (Blender XY → Unity XZ;
-  local (x, y, z) → (−x, z, −y)); o alvo sem a tabela vira `problems`.
-- **`CFCharacter.WalkPinStep` vale para TODO personagem** (ligado por padrão, `pinWhileWalking`): enquanto o andar toca,
-  o pé que menos andou desde o quadro anterior fica onde estava e a unidade é carregada por ele (teto
-  `walkPinMaxStep` 0,03 m). Curva e chegada sem patinar (0,009 cm por 1/30 s no OCASO). Roda depois do `PinStep` e só
-  quando ele não está prendendo; desliga-se por personagem em `pinWhileWalking`.
-- A janela Game pode estar em retrato: capture pela câmera numa `RenderTexture` 1280×720 (`cam.Render` + `ReadPixels`).
-- **Vídeo em fps alto**: `CFFrameRecorder` (dir, fps, seconds; `Stop()`) fixa `Time.captureFramerate` e grava o Game view
-  no fim de cada quadro (pós-FX e HUD OnGUI juntos) → `ffmpeg -framerate 60 -i f_%05d.jpg`; `frames.txt` dá o tempo de
-  jogo por quadro (corte no `battle.Log`). Vitrine de um personagem: cena com `CFReel` (todos os clipes, título por
-  clipe, andares em arco, ataque em câmera lenta, morte → `Rebind` → vitória) — GRANIZO: `Assets/Scenes/GRANIZO_Reel.unity`.
-  `Screen.width` lido pelo `execute_code` é a janela do editor, não o Game view. Peça antes de assumir o Play: o
-  usuário pode estar no laboratório.
-- **Tela dividida, vários personagens no MESMO roteiro**: `CFSplitReel` (`Assets/Scenes/Factory_Split.unity`, 6 painéis
-  3×2 + faixa do passo/skill entre as linhas). Todos ficam na ORIGEM, cada um num layer próprio (24+i, também os
-  invocados via `UnitSummoned`); cada painel é uma cópia da câmera principal que vê só o seu layer + o cenário e
-  renderiza numa `RenderTexture` própria (2× e filtrada): com `Camera.rect` o `OnRenderImage` do pós-FX pega a tela
-  inteira. O OnGUI monta a grade, e o `ScreenCapture` grava tudo. Enquadre pelo tamanho do CORPO (renderers `*Body*`):
-  com props e colunas de efeito no bounds o OCASO ficava com metade do tamanho. Depois da morte, `Rebind` não devolve
-  um corpo explodido: `CFExplosion.SetBlown(false)` (o FERRUGEM sumia na vitória). Passos de duração fixa (idle 2,8 ·
-  andar 4,6 · ataque 3,2 · especial 4,4 · dano 1,7 · morte 3,1 · vitória 2,8 s) = 1.362 quadros a 60 fps em ~4 min.
+- A prop that gets hit (training dummy, totem, banner) is NOT a character: `blender/wobble_rig.py` (upright bones,
+  weights by height) → `blender/export_prop.py` (FBX without clips + manifest `kind: wobble`, springs, `target`) →
+  `cf/to_unity.py` → `CFImporter.Import(dir)` branches to `ImportWobble`: Generic rig WITHOUT an Animator (with "None"
+  Unity imports a rigid mesh: 0 skinned triangles), `CFWobble` on the root with the SAME springs as `wobble.py`.
+  Report: height, tris, floor, `targetLocal` (+Z = the painted side; the importer fails it otherwise).
+- Projectile baked into the animation (bolt / hex from `fx.py`): `export.py` turns the flight recorded in the action
+  (`cf_fx_<fx>`) into a `land` event on the burst frame, and the manifest gains `projectiles` (clip, fx, launch and
+  landing frame, target, arc). The game kicks the target on `land`, not on `hit` (on `hit` the projectile LEAVES). The
+  target sits where the projectile bursts: axis = the projectile's target + the disc's depth (`BuildTraining` reads both).
+- `CFImporter.BuildTraining(hostDir, targetDir)` → `Assets/Scenes/<HOST>_Training.unity` with `CFTraining` (patrol,
+  summoning, spells, strikes, target HP, raising a summon from the body). The round RULES (slots, topple band,
+  `stopLead`, `unitLead`, HP, full ring), the camera and the proof with `CFRoundProbe` are in skill `character-show`
+  §7 — it is the mirror of `blender/training_show.py`.
+- What is import contract (and lives here): `wobble.topple` in the manifest (`to_unity.py` flattens `dirs` into
+  columns `deg / r / k2 / rest`: `JsonUtility` doesn't read nested arrays) and the importer adds 180° to the angle
+  (Blender XY → Unity XZ; local (x, y, z) → (−x, z, −y)); a target without the table becomes `problems`.
+- **`CFCharacter.WalkPinStep` applies to EVERY character** (on by default, `pinWhileWalking`): while the walk plays,
+  the foot that moved least since the previous frame stays where it was and the unit is carried by it (cap
+  `walkPinMaxStep` 0.03 m). Curves and arrivals without sliding (0.009 cm per 1/30 s on OCASO). It runs after `PinStep`
+  and only when that one isn't pinning; turn it off per character with `pinWhileWalking`.
+- The Game window may be in portrait: capture through the camera into a 1280×720 `RenderTexture` (`cam.Render` +
+  `ReadPixels`).
+- **High-fps video**: `CFFrameRecorder` (dir, fps, seconds; `Stop()`) fixes `Time.captureFramerate` and records the Game
+  view at the end of each frame (post-FX and OnGUI HUD together) → `ffmpeg -framerate 60 -i f_%05d.jpg`; `frames.txt`
+  gives the game time per frame (cut on `battle.Log`). Showcase reel for one character: a scene with `CFReel` (all
+  clips, a title per clip, walks in an arc, attack in slow motion, death → `Rebind` → victory) — GRANIZO:
+  `Assets/Scenes/GRANIZO_Reel.unity`. `Screen.width` read by `execute_code` is the editor window, not the Game view.
+  Ask before taking over Play: the user may be in the lab.
+- **Split screen, several characters on the SAME script**: `CFSplitReel` (`Assets/Scenes/Factory_Split.unity`, 6
+  panels 3×2 + a step/skill strip between the rows). All of them stand at the ORIGIN, each on its own layer (24+i, the
+  summons too, via `UnitSummoned`); each panel is a copy of the main camera that sees only its layer + the scenery and
+  renders into its own `RenderTexture` (2× and filtered): with `Camera.rect` the post-FX `OnRenderImage` grabs the whole
+  screen. OnGUI assembles the grid, and `ScreenCapture` records everything. Frame by the size of the BODY (`*Body*`
+  renderers): with props and effect columns in the bounds, OCASO ended up at half size. After death, `Rebind` doesn't
+  restore an exploded body: `CFExplosion.SetBlown(false)` (FERRUGEM vanished in the victory). Fixed-duration steps
+  (idle 2.8 · walk 4.6 · attack 3.2 · special 4.4 · hit 1.7 · death 3.1 · victory 2.8 s) = 1,362 frames at 60 fps in
+  ~4 min.
 
-## 2d. Efeitos por tipo, explosão e stun (FERRUGEM)
+## 2d. Effects by type, explosion and stun (FERRUGEM)
 
-- `blend` do material de efeito vem do TIPO: `additive` (raio, faísca, chama, aura: luz, sem sombra), `alpha` (poeira,
-  vapor, fumaça da explosão: partícula Alpha Blended UNLIT e de dois lados, tinta 0,5 = a cor do mapa — o Standard Fade
-  iluminado desenhava as cartas PRETAS vistas por trás), `""` (os pedaços da explosão: o corpo, opaco, COM sombra). Malha com vários materiais (gibs: corpo / borda / fumaça) = uma entrada por slot usado (`slot`, `color`
-  para material sem textura); o export remove slots vazios para slot i = submalha i. O importador reprova se o número de
-  materiais não bater com `subMeshCount`.
-- Bloco `explosion` do `death.clip.json` → manifesto (`to_unity.py`) → `CFExplosion` no prefab: no evento (`explode`), todo
-  `CFWobble` em pé no raio toma dano + empurrão para longe do coração e, se sobreviver, `Stun`. O coração é a média dos
-  ossos no último quadro com o corpo inteiro (no evento a escala do `root` já o escondeu). Jogo: `Exploded(centro, raio)`.
-  "Inteiro" = nem o `rootBone` nem os ossos logo abaixo dele com `lossyScale` < 0,95 (o export põe o colapso no quadril, não
-  no `root`: testar só o `root` amostrava o coração a 1 cm do chão acima de 30 fps).
-- Alvo importado (`ImportWobble`) ganha `CFStunFx` com `CF_StunArc.mat` (aditivo) e `CF_StunRim.mat` (shader
-  `CharacterFactory/StunRim`; só pipeline embutido). O stun é o `shock` do Blender camada por camada, desenhado pela engine:
-  arcos com a imagem do `fx.py` (núcleo quente + brilho), garfo, arco para o chão, faíscas balísticas, estrela no pouso do
-  salto, luz que pisca e um FRESNEL azul sobre o corpo — é o fresnel que lê na câmera do jogo (aditivo sobre albedo claro só
-  clareia). Arcos só na CASCA externa (célula de 2 cm × 22,5°, raio ≥ 85 % do máximo da célula, normal para fora) e com
-  `cameraBias` (o lado que a câmera vê).
-- **Pedaços (gibs) na engine**: o manifesto `gibs` → `CFExplosion` troca os renderers SÓ em Play e no evento (pedaços ligados,
-  corpo desligado; volta quando o corpo está inteiro de novo depois de `restoreAfter`); a borda quente brilha por
-  `MaterialPropertyBlock` = cor × força × escala do osso `FxGibsHeat` (no Blender um driver). Slot 0 dos pedaços = o material do
-  corpo (`share`: sem segunda cópia dos mapas); as LOD1 dos efeitos entram nos `LODGroup`.
-- **Nunca "slot i = submalha i"**: o importador do FBX triangula n-gons côncavas sozinho, perdeu 420 triângulos das tampas e
-  TROCOU as submalhas da LOD0 (interior inteiro amarelo, borda preta; a LOD1 vinha certa). O `export.py` exporta com
-  `use_triangles=True` e grava `submeshes` (triângulos e área por slot); `CFImporter.MatchSlots` casa pela melhor permutação
-  (reprova > 5 %) e `CFExplosion.hotSlots` guarda onde o material quente caiu em CADA renderer.
-- **Fumaça iluminada desenhada sem luz**: rode `blender/lit_gain.py --arg name=<NAME>` antes do export (mede quanto a luz do
-  viewport aprovado clareia cada material de fumaça → `cf_lit_gain` → `tint` no manifesto). O importador converte para o espaço
-  de cor do projeto: o shader de partícula legado faz 2 × tinta × mapa no espaço de TRABALHO e, num projeto Linear, a tinta
-  0,5 mostrava a fumaça a 0,43× do mapa (FERRUGEM: fuligem preta).
-- **Gravar um evento quadro a quadro em Play**: no evento ponha `Time.captureDeltaTime = 1/30` e capture num
-  `EditorApplication.update` quando `Time.frameCount − f0` alcançar cada deslocamento (`Camera.main.Render` numa RT);
-  `Application.onBeforeRender` não dispara com a janela Game escondida. Log por `AppDomain.SetData`; salve em
+- The effect material's `blend` comes from the TYPE: `additive` (bolt, spark, flame, aura: light, no shadow), `alpha`
+  (dust, steam, explosion smoke: Alpha Blended UNLIT two-sided particle, tint 0.5 = the map's color — the lit Standard
+  Fade drew the cards BLACK when seen from behind), `""` (the explosion chunks: the body, opaque, WITH shadow). A mesh
+  with several materials (gibs: body / rim / smoke) = one entry per used slot (`slot`, `color` for a material without
+  a texture); the export removes empty slots so that slot i = submesh i. The importer fails it if the number of
+  materials doesn't match `subMeshCount`.
+- The `explosion` block of `death.clip.json` → manifest (`to_unity.py`) → `CFExplosion` on the prefab: on the event
+  (`explode`), every standing `CFWobble` within the radius takes damage + a push away from the heart and, if it
+  survives, `Stun`. The heart is the mean of the bones on the last frame with the whole body (at the event the `root`
+  scale has already hidden it). Game: `Exploded(centro, raio)` (center, radius).
+  "Whole" = neither the `rootBone` nor the bones right below it with `lossyScale` < 0.95 (the export puts the collapse
+  on the hips, not on the `root`: testing only the `root` sampled the heart 1 cm above the floor at above 30 fps).
+- An imported target (`ImportWobble`) gets `CFStunFx` with `CF_StunArc.mat` (additive) and `CF_StunRim.mat` (shader
+  `CharacterFactory/StunRim`; built-in pipeline only). The stun is Blender's `shock`, layer by layer, drawn by the
+  engine: arcs with the `fx.py` image (hot core + glow), fork, arc to the floor, ballistic sparks, a star at the jump's
+  landing, a flickering light and a blue FRESNEL over the body — the fresnel is what reads on the game camera
+  (additive over a light albedo only brightens). Arcs only on the outer SHELL (cell of 2 cm × 22.5°, radius ≥ 85% of
+  the cell's maximum, normal facing out) and with `cameraBias` (the side the camera sees).
+- **Chunks (gibs) in the engine**: the `gibs` manifest → `CFExplosion` swaps the renderers ONLY in Play and on the
+  event (chunks on, body off; it switches back when the body is whole again after `restoreAfter`); the hot rim glows
+  via `MaterialPropertyBlock` = color × strength × scale of the `FxGibsHeat` bone (in Blender, a driver). Slot 0 of the
+  chunks = the body's material (`share`: no second copy of the maps); the effects' LOD1s go into the `LODGroup`s.
+- **Never "slot i = submesh i"**: the FBX importer triangulates concave n-gons on its own, lost 420 triangles of the
+  caps and SWAPPED the LOD0 submeshes (whole interior yellow, rim black; LOD1 came out right). `export.py` exports with
+  `use_triangles=True` and writes `submeshes` (triangles and area per slot); `CFImporter.MatchSlots` matches by the
+  best permutation (fails > 5%) and `CFExplosion.hotSlots` stores where the hot material landed in EACH renderer.
+- **Lit smoke drawn without light**: run `blender/lit_gain.py --arg name=<NAME>` before the export (it measures how much
+  the approved viewport's light brightens each smoke material → `cf_lit_gain` → `tint` in the manifest). The importer
+  converts to the project's color space: the legacy particle shader does 2 × tint × map in WORKING space and, in a
+  Linear project, tint 0.5 showed the smoke at 0.43× the map (FERRUGEM: black soot).
+- **Recording an event frame by frame in Play**: on the event, set `Time.captureDeltaTime = 1/30` and capture in an
+  `EditorApplication.update` when `Time.frameCount − f0` reaches each offset (`Camera.main.Render` into an RT);
+  `Application.onBeforeRender` doesn't fire with the Game window hidden. Log via `AppDomain.SetData`; save to
   `review/unity/unity_melee_r<N>.log` + `review/unity/blast/`.
-- **Capturar LineRenderer / efeito de câmera**: mova a câmera numa chamada, capture na SEGUINTE. A fita `View` é montada para a
-  câmera do quadro: mover e renderizar na mesma chamada desenhou os arcos de lado, dentro do saco (58 % dos pixels sumiram).
-  Para segurar um instante: inscreva-se no evento (`Exploded += ... Time.timeScale = 0.04f`) e capture em seguida.
+- **Capturing a LineRenderer / camera effect**: move the camera in one call, capture in the NEXT one. The `View` ribbon
+  is built for the frame's camera: moving and rendering in the same call drew the arcs sideways, inside the sack (58%
+  of the pixels vanished). To hold an instant: subscribe to the event (`Exploded += ... Time.timeScale = 0.04f`) and
+  capture right after.
 
-## 2e. Sentir na engine: hit-stop, tremor, bando variado, transições afinadas no motor
+## 2e. Feel in the engine: hit-stop, shake, varied squad, transitions tuned in the engine
 
-O que o clipe promete (contato claro, segurar no impacto, bando que não anda em passo — skill `character-clips` §6b) a
-engine entrega assim. Tudo em `Runtime/CFBattle.cs`, `CFDuelDirector.cs`, `CFDuelLab.cs`, `CFBlendTune.cs`.
+What the clip promises (clear contact, a hold on impact, a squad that doesn't walk in step — skill `character-clips`
+§6b) the engine delivers like this. All in `Runtime/CFBattle.cs`, `CFDuelDirector.cs`, `CFDuelLab.cs`, `CFBlendTune.cs`.
 
-**Hit-stop** (`CFBattle.hitStop` 0,06 s, `killStop` 0,13 s):
-- No evento de acerto (corpo a corpo: `hitEvents`; magia: `landEvent`) o `Animator.speed` do atacante E da vítima vai a
-  0 por esse tempo (magia: só o alvo — o lançador soltou o projétil há muito). O `Freeze` soma ao `until` e ao
-  `nextAttack` da unidade só o tempo NOVO congelado (dois golpes seguidos não somam duas vezes), o `Think` retorna
-  enquanto congelado (nem o empurrão anda) e o `Thaw` devolve a velocidade PRÓPRIA da unidade (`animSpeed`, ver bando).
-- Prova por conta, não por foto (o congelamento dura 2 quadros): a 0,1× o FERRUGEM avançou 9 quadros do ataque em
-  0,416 s de jogo em vez de 12,5 — os 3,6 que faltam são os dois hit-stops de 0,06 s dos eventos `hit` e `rake2`. O
-  leitor do laboratório mostra `[HIT-STOP]` e o quadro congelado.
-- O gatilho da reação (`hit`) é dado ANTES do congelamento: a transição começa e fica parada, a vítima segura a pose de
-  contato e a reação estala quando solta — é o efeito que se quer.
+**Hit-stop** (`CFBattle.hitStop` 0.06 s, `killStop` 0.13 s):
+- On the hit event (melee: `hitEvents`; spell: `landEvent`) the `Animator.speed` of the attacker AND the victim goes to
+  0 for that time (spell: only the target — the caster released the projectile long ago). `Freeze` adds to the unit's
+  `until` and `nextAttack` only the NEW frozen time (two strikes in a row don't add twice), `Think` returns while
+  frozen (not even the push moves) and `Thaw` restores the unit's OWN speed (`animSpeed`, see squad).
+- Proof by arithmetic, not by screenshot (the freeze lasts 2 frames): at 0.1× FERRUGEM advanced 9 frames of the attack
+  in 0.416 s of game time instead of 12.5 — the missing 3.6 are the two 0.06 s hit-stops of the `hit` and `rake2`
+  events. The lab's readout shows `[HIT-STOP]` and the frozen frame.
+- The reaction trigger (`hit`) is set BEFORE the freeze: the transition starts and stays paused, the victim holds the
+  contact pose and the reaction snaps when it is released — that is the effect we want.
 
-**Sinal para a câmera** (`CFBattle.Struck(ponto, dano / vida máxima, matou)`, no mesmo quadro da faísca):
-- `CFDuelDirector.OnStruck`: tremor ANGULAR (a vista gira, a câmera fica; Perlin a 38 Hz, decai e^(−9t)) de
-  `shakeHit` 0,35–0,9° (pela fração de dano) e `shakeKill` 1,5°, metade no Retrato e no Livre; soco de FOV `punchHit`
-  0,9° / `punchKill` 2,2° (decai e^(−11t)). Tudo em tempo NÃO escalado: o tremor é o mesmo na câmera lenta do nocaute.
-- Qualquer outro diretor (o `CFDemoDirector` da masmorra) assina o mesmo evento — nada de olhar a vida por quadro.
+**Signal to the camera** (`CFBattle.Struck(ponto, dano / vida máxima, matou)` — point, damage / max HP, killed — on the
+same frame as the spark):
+- `CFDuelDirector.OnStruck`: ANGULAR shake (the view rotates, the camera stays put; Perlin at 38 Hz, decays e^(−9t)) of
+  `shakeHit` 0.35–0.9° (by damage fraction) and `shakeKill` 1.5°, half that in Retrato (Portrait) and Livre (Free); FOV
+  punch `punchHit` 0.9° / `punchKill` 2.2° (decays e^(−11t)). All in UNSCALED time: the shake is the same in the
+  knockout slow motion.
+- Any other director (the dungeon's `CFDemoDirector`) subscribes to the same event — no polling HP every frame.
 
-**Bando variado** (`CFBattle.varySquad`, `squadSpeed` (0,92, 1,08), `squadScale` (0,95, 1,05)):
-- Só invocados (o herói é sempre igual). `Vary` no `OnSummoned`: velocidade do Animator e escala do transform, raio do
-  corpo × escala, `walkSpeed` × velocidade × escala (o pé não patina: a velocidade de chão do clipe escala com o
-  playback E com o tamanho). Os tempos de clipe da batalha passam por `Len(u, clip)` = duração ÷ velocidade.
-- Determinístico pela chave da unidade com sequência de razão áurea (h = frac(k·0,618 + 0,17)): o primeiro hash
-  (seno de vizinhos) deu ×0,93 aos dois esqueletos de uma invocação.
+**Varied squad** (`CFBattle.varySquad`, `squadSpeed` (0.92, 1.08), `squadScale` (0.95, 1.05)):
+- Summons only (the hero is always the same). `Vary` in `OnSummoned`: Animator speed and transform scale, body
+  radius × scale, `walkSpeed` × speed × scale (the foot doesn't slide: the clip's ground speed scales with playback
+  AND with size). The battle's clip times go through `Len(u, clip)` = duration ÷ speed.
+- Deterministic by the unit's key, with a golden-ratio sequence (h = frac(k·0.618 + 0.17)): the first hash (sine of
+  neighbors) gave ×0.93 to both skeletons of one summon.
 
-**Transições afinadas NO MOTOR** (`CFBlendTune`, JSON por personagem):
-- Categorias do controlador que o importador monta: `walkIn` (repouso → andar, 0,20), `walkOut` (andar → repouso,
-  0,20), `fromHome` (repouso → one-shot, 0,06), `fromLoop` (andar → one-shot, 0,15), `fromOneShot` (one-shot → one-shot,
-  0,08), `back` (one-shot → repouso no fim, 0,10; `exitTime` = 1 − back / duração). A categoria se LÊ do controlador
-  (repouso = estado padrão; laço = estado com parâmetro Bool do mesmo nome), então serve para qualquer personagem.
-- No laboratório (painel Transições, só no editor): edite, **Aplicar** escreve no `.controller` e o Animator em Play
-  usa na hora (medido: a transição repouso → dano passou a durar 0,250 s sem reiniciar o estado); **Salvar JSON**
-  grava `Assets/Characters/<NAME>/<NAME>.blend_tune.json`. O `CFImporter.Import` lê esse arquivo (sem ele, os padrões
-  acima) — reimportar não perde o que foi afinado a olho.
-- Atenção: Aplicar muda o asset no disco também fora do Play. Para desfazer um teste: `TuneApply(lado, new CFBlendTune())`
-  (os padrões) ou reimporte.
-- Afinar por olho tem limite: blend curto demais estala onde as poses diferem (a regra dos cinco clipes começarem na
-  mesma pose ≤ 1 mm é o que permite 0,06 s); blend do andar longo demais patina — confira com `MeasureTransitions`
-  depois de salvar e reimportar.
+**Transitions tuned IN THE ENGINE** (`CFBlendTune`, JSON per character):
+- Categories of the controller the importer builds: `walkIn` (rest → walk, 0.20), `walkOut` (walk → rest,
+  0.20), `fromHome` (rest → one-shot, 0.06), `fromLoop` (walk → one-shot, 0.15), `fromOneShot` (one-shot → one-shot,
+  0.08), `back` (one-shot → rest at the end, 0.10; `exitTime` = 1 − back / duration). The category is READ from the
+  controller (rest = default state; loop = a state with a Bool parameter of the same name), so it works for any character.
+- In the lab ("Transicoes" (Transitions) panel, editor only): edit; **Aplicar** (Apply) writes to the `.controller` and
+  the Animator in Play uses it right away (measured: the rest → hit transition went to 0.250 s without restarting the
+  state); **Salvar JSON** (Save JSON) writes `Assets/Characters/<NAME>/<NAME>.blend_tune.json`. `CFImporter.Import`
+  reads that file (without it, the defaults above) — reimporting doesn't lose what was tuned by eye.
+- Warning: Aplicar changes the asset on disk even outside Play. To undo a test: `TuneApply(lado, new CFBlendTune())`
+  (`lado` = side; these are the defaults) or reimport.
+- Tuning by eye has a limit: a blend that is too short pops where the poses differ (the rule that the five clips start
+  in the same pose ≤ 1 mm is what allows 0.06 s); a walk blend that is too long slides — check with `MeasureTransitions`
+  after saving and reimporting.
 
-**Visualizar outra câmera dentro do jogo** (o inset do laboratório): RenderTexture desenhada pelo IMGUI num projeto
-Linear sai com uma codificação de gama A MAIS (chão 0,40 desenhado como 0,66 = 0,40^(1/2,2)), com RT sRGB ou linear.
-Desenhe direto na tela por viewport (`camera.pixelRect`, `depth` acima da principal) e copie o `CFPostFX` da câmera
-principal para a de pré-visualização (sem ele a vista fica pálida ao lado do jogo); medições continuam num RT próprio
-com `RenderWithShader`.
+**Viewing another camera inside the game** (the lab's inset): a RenderTexture drawn by IMGUI in a Linear project comes
+out with one EXTRA gamma encoding (floor 0.40 drawn as 0.66 = 0.40^(1/2.2)), whether the RT is sRGB or linear.
+Draw directly to the screen per viewport (`camera.pixelRect`, `depth` above the main one) and copy the main camera's
+`CFPostFX` to the preview camera (without it the view looks washed out next to the game); measurements still go into
+their own RT with `RenderWithShader`.
 
-## 2f. Quadrúpede (UIVO)
+## 2f. Quadruped (UIVO)
 
-- `export.py` lê `rig["cf_quad"]`: mapa de nomes próprio (Hips/Spine/Spine1/Spine2/Chest/Neck/Neck1/Head, Tail1–4,
+- `export.py` reads `rig["cf_quad"]`: its own name map (Hips/Spine/Spine1/Spine2/Chest/Neck/Neck1/Head, Tail1–4,
   Left/RightScapula, Left/RightFrontUpLeg/FrontLeg/FrontFoot/FrontToeBase, Left/RightUpLeg/Leg/Foot/ToeBase, Jaw,
-  Left/RightEar1–2) — o mapa Mixamo chamaria a ponta do rabo de "Hips". `FEET` = as quatro patas; `rig_bones` ganha
-  `frontFoot*/frontToe*` e o manifesto `quadruped: true`. Rig Generic (sem Humanoid para quatro patas).
-- O `CFImporter` escolhe a marcha pelo nome `walk` ou, na falta, o primeiro loop com velocidade: ponha `run` antes de
-  `sprint_loop` na lista de clipes. O `sprint` é um DASH (`gait.dash`: distância, quadros, perfil) — o jogo move a unidade
-  por esse perfil, não por uma velocidade constante.
-- C# com QUATRO pés (feito 2026-11-14): `CFCharacter.quadruped` + `frontLeft/RightBall`, `FootCount` / `GetFoot(i)`
-  (tornozelo nulo no quadrúpede), `QuadWalkPin` (só patas plantadas, a que menos andou, teto `walkPinMaxStep`).
-  Planted = `ballRest + margem` (7,5 cm no UIVO). Import: `ok=True problems=[]`, −0,449 cm.
-- **Pino de quadrúpede = MÉDIA das patas plantadas** (`PinStep` / `Carry`): prender só a pata que lidera a deixava parada
-  e fazia as outras plantadas deslizarem o que ela não deslizava (UIVO run→attack com janela 29,5 / 37,7 cm → 6,2 / 9,6).
-- **O `PinStep` começa no quadro ANTES da mistura e termina o último pedaço dela**: o 1º quadro da mistura já moveu o pé
-  pelo peso desse quadro, e uma mistura de 0,08 s que acaba entre dois quadros perdia o resto (o pino do bote carregou
-  0,12 m de 0,28 num quadro longo do editor e a mordida caiu 14 cm antes do alvo). `ResetPins()` depois de teletransportar
-  a unidade (reinício de rodada); um apoio gravado a mais de um `pinMaxCarry` de distância é descartado.
-- **`QuadWalkPin` relia a pata DEPOIS de mover a unidade e somava a correção de novo**: virou integrador, −3 cm por quadro
-  (o teto) para TRÁS, e a corrida de 2,18 m/s andava 1,24 m/s no Play. A tabela mostrava: com o pino (15,7 cm) pior que
-  sem ele (5,8). Regra: se o modo de jogo (com pino) mede PIOR que o sem pino, o pino está errado — não o clipe.
-- **Dash conduzido pelo personagem**: `PlayDash(distância)` dispara o clipe, larga a marcha e grava origem/direção;
-  `DashStep()` move a unidade pelo perfil no `LateUpdate` ANTES dos pinos (movido depois, o pino gravava a pata antes do
-  último empurrão — ~10 cm — e puxava o lobo para trás); `IsDashing` até pousar. Entrar num dash é um CORTE
-  (`CFBlendTune.toDash` 0,03 s) e nada é preso; sair de um dash que já pousou prende as patas plantadas e o corpo assenta
-  sobre elas (0,28 m no UIVO): sprint → ataque / dano / morte / vitória / idle = 9,8 / 5,4 / 4,0 / 3,9 / 3,4 cm.
-- **Como um one-shot termina** (`end` no clip.json → `cf_end` → manifesto → `CFClip.end`): `home` (padrão: entrega para o
-  idle), `hold` (morte, vitória), `chain` (o dash termina NO alvo e o golpe segue no evento `land`; nunca segura —
-  um estado que segura não tem saída, o ataque não conseguiria seguir; sem golpe, segura 0,1 s e volta sozinho,
-  `exitTime = 1 + 0,1/len`, interrompível pelos gatilhos da origem). O `export.py` reporta `end_problem` quando um `home`
-  não volta. UIVO r1: o rabo ainda balançando 4,46 cm no fim do ataque e o deslize do dano (6 cm) viraram HOLD —
-  o lobo congelaria depois de cada mordida e de cada dano. Confira `hold` por clipe no relatório da Unity.
-- **Marcha → marcha direto** no controlador (`UseGait` troca os bools no mesmo quadro): pela pose-base a corrida parava
-  quase toda antes do galope. A transição de troca fica ANTES da volta para casa na lista do estado.
-- **Fase de ENTRADA medida no motor**: `MeasureTransitions` varre todas as fases de entrada da marcha (rampa + `WalkPinStep`,
-  como no Play), grava a melhor no controlador se ganhar 0,5 cm da do export e põe a linha `entry phase swept`. UIVO
-  0,80 → 0,60: idle→run 43,3 → 1,4 cm; GRANIZO 0,0 cm. Rode `MeasureTransitions` depois de TODO `Import`.
-- **Janela de saída CONJUNTA** (parar E golpear: o `PlayWhenPlanted` espera a mesma janela): escolhida pelo pior dos dois
-  por fase. Só pela parada, UIVO tinha duas fases em que o ataque deslizava 18–19 cm. UIVO 0,76–0,96: run→idle 3,0 / 9,9,
-  run→attack 6,2 / 9,6 (espera ≤ 0,65 s); GRANIZO walk→idle 1,1 / 3,9, walk→attack 1,3 / 1,8.
-- Medir um loop à mão exige `SetMoving(true)` / o bool da marcha: sem ele o controlador volta ao idle em 7 quadros e a
-  "patinação" medida (146 cm) era o idle sendo carregado. E o `MeasureTransitions` roda o que o `LateUpdate` roda
-  (`DashStep` → `PinStep`, inclusive no último quadro da marcha) — senão mede outro motor.
-- Limites declarados (UIVO): idle→sprint 44 cm (o dash nasce da fase estendida da corrida — o jogo entra nele pela
-  corrida); idle→attack 7,2 cm = interpolação a 60 Hz das patas traseiras entre chaves a 30 fps (0 no Blender).
-- **Caça contra o boneco** (`CFImporter.BuildHunt(hostDir, targetDir)` → `Assets/Scenes/<HOST>_Hunt.unity`, `CFHunt`):
-  todos os clipes de um caçador com dash, em rodadas alternadas (vitória / dano + morte), legenda do clipe na tela, câmera
-  que acompanha, barra de vida. Onde o alvo fica é MEDIDO: alcance da mordida (pele mais à frente acima das patas no 1º
-  `hit` do ataque: 1,016 m), o carregamento da saída do dash (0,28 m) e a face do alvo na altura da mordida (0,184 m) →
-  a mordida entra 2–4 cm na face. A mordida do próprio dash (0,797 m) fecha no ar ~0,5 m antes (`dashBites` false).
-  Vídeo: `CFFrameRecorder` (60 fps fixos) + `CFHunt.RestartFromTop()`.
-  Contra o "robótico" na engine (r2): mordidas ENCADEADAS no evento `interrupt` do ataque (`chainEvent`), cada uma com
-  velocidade própria (0,93–1,07, sequência de razão áurea: `BiteSpeed`) — ataque → idle → ataque era um reset; a morte
-  começa na metade do dano (`deathAt` 0,5) em vez de depois da recuperação inteira. Câmera (`cameraMode`, tecla C):
-  `Top` = a do jogo (elevação 56°, fov 38), `Side` = a antiga, `TopAndSide` (padrão) = de cima + a lateral num inset
-  (`insetRect`, câmera "Side Inset Camera" copiada da principal, profundidade +1).
-- **Efeito de vento** (`fx.py` tipo `wind`, landmarks `fx.wind`): arcos no focinho + riscos que ficam no MUNDO; entram
-  no FBX como qualquer efeito (ossos `Fx*` por escala, material aditivo). O clipe é no lugar, então riscos e poeira já
-  andam PARA TRÁS no clipe pelo quanto o chão andou (`ground_travel`): quando a engine leva a unidade para a frente na
-  velocidade do clipe, eles ficam parados no mundo. Só vale se a unidade andar na `ground_speed_m_s` do manifesto.
-- **Primeira mordida = `dash_bite`** (r3): `CFHunt.dashBiteClip` toca no fim do dash quando o controlador tem o clipe
-  (`HasClip`); as mordidas seguintes encadeiam no ataque. O `BuildHunt` mede onde o alvo fica pelo `hit` do clipe da
-  PRIMEIRA mordida (`first_bite` no JSON; carregamento 0,0 m). Unity: sprint → dash_bite 2,1 cm × sprint → attack 10,3.
-- **Unidade sem arma não tem prop de mão**: o `export.py` punha `UIVO_Hammer` no manifesto porque `cf_weapon_prop` tinha
-  "hammer" como padrão. Agora: sem chave no rig e sem objeto `<NAME>_<prop>` → sem prop (`prop`/`hand_prop` = "").
-- Abertos depois do r3: idle → attack 8,4 cm e idle → hit 9,9 cm (bola da pata; o `PinStep` em pé → em pé cancelaria o
-  deslize planejado do dano), run → attack espera a janela, o renderer do vento não é desligado fora das marchas, linhas
-  do `sprint_loop` no `MeasureTransitions`, teto do `maxPhaseWait`.
-- **Pose-base nova muda a tabela inteira** (UIVO r4, agachado com as patas abertas): a média melhora (run → idle 5,5 → 4,3,
-  run → attack 8,8 → 6,8 cm), mas o que sai de uma pose de patas JUNTAS para a casa piora — dash interrompido por morte /
-  dano / vitória 4–9 → 8,5–11,3 cm (o pouso do dash × as patas abertas da casa). O caminho da caçada (sprint → dash_bite)
-  ficou em 2,1 cm porque o `dash_bite` traz a pose nova só na recuperação, com cada pata no ar. Rode `MeasureTransitions`
-  e compare com a tabela anterior a cada mudança de pose-base.
+  Left/RightEar1–2) — the Mixamo map would call the tip of the tail "Hips". `FEET` = the four paws; `rig_bones` gains
+  `frontFoot*/frontToe*` and the manifest `quadruped: true`. Generic rig (no Humanoid for four legs).
+- `CFImporter` picks the gait by the name `walk` or, failing that, the first loop with a speed: put `run` before
+  `sprint_loop` in the clip list. `sprint` is a DASH (`gait.dash`: distance, frames, profile) — the game moves the unit
+  along that profile, not at a constant speed.
+- C# with FOUR feet (done 2026-11-14): `CFCharacter.quadruped` + `frontLeft/RightBall`, `FootCount` / `GetFoot(i)`
+  (null ankle on the quadruped), `QuadWalkPin` (planted paws only, the one that moved least, cap `walkPinMaxStep`).
+  Planted = `ballRest + margem` (margin; 7.5 cm on UIVO). Import: `ok=True problems=[]`, −0.449 cm.
+- **Quadruped pin = MEAN of the planted paws** (`PinStep` / `Carry`): pinning only the leading paw kept it still and
+  made the other planted paws slide by what it didn't (UIVO run→attack with window 29.5 / 37.7 cm → 6.2 / 9.6).
+- **`PinStep` starts on the frame BEFORE the blend and finishes the last piece of it**: the blend's 1st frame has
+  already moved the foot by that frame's weight, and a 0.08 s blend that ends between two frames lost the rest (the
+  lunge's pin carried 0.12 m of 0.28 in one long editor frame and the bite landed 14 cm short of the target).
+  `ResetPins()` after teleporting the unit (round restart); a support recorded more than one `pinMaxCarry` away is discarded.
+- **`QuadWalkPin` re-read the paw AFTER moving the unit and added the correction again**: it became an integrator,
+  −3 cm per frame (the cap) BACKWARD, and the 2.18 m/s run moved at 1.24 m/s in Play. The table showed it: with the pin
+  (15.7 cm) worse than without it (5.8). Rule: if the game mode (with the pin) measures WORSE than without the pin, the
+  pin is wrong — not the clip.
+- **Character-driven dash**: `PlayDash(distância)` (distance) fires the clip, drops the gait and records origin/direction;
+  `DashStep()` moves the unit along the profile in `LateUpdate` BEFORE the pins (moved after, the pin recorded the paw
+  before the last push — ~10 cm — and pulled the wolf backward); `IsDashing` until it lands. Entering a dash is a CUT
+  (`CFBlendTune.toDash` 0.03 s) and nothing is pinned; leaving a dash that has already landed pins the planted paws and
+  the body settles onto them (0.28 m on UIVO): sprint → attack / hit / death / victory / idle = 9.8 / 5.4 / 4.0 / 3.9 /
+  3.4 cm.
+- **How a one-shot ends** (`end` in clip.json → `cf_end` → manifest → `CFClip.end`): `home` (default: hands off to
+  idle), `hold` (death, victory), `chain` (the dash ends AT the target and the strike follows on the `land` event; it
+  never holds — a state that holds has no exit, so the attack couldn't follow; without a strike, it holds 0.1 s and
+  returns on its own, `exitTime = 1 + 0,1/len`, interruptible by the source's triggers). `export.py` reports
+  `end_problem` when a `home` doesn't return. UIVO r1: the tail still swinging 4.46 cm at the end of the attack and the
+  hit's slide (6 cm) had turned into HOLD — the wolf would freeze after every bite and every hit. Check `hold` per clip
+  in the Unity report.
+- **Gait → gait directly** in the controller (`UseGait` swaps the bools on the same frame): going through the base pose,
+  the run almost came to a full stop before the gallop. The swap transition goes BEFORE the return home in the state's list.
+- **ENTRY phase measured in the engine**: `MeasureTransitions` sweeps all of the gait's entry phases (ramp +
+  `WalkPinStep`, as in Play), writes the best one into the controller if it beats the export's by 0.5 cm and adds the
+  line `entry phase swept`. UIVO 0.80 → 0.60: idle→run 43.3 → 1.4 cm; GRANIZO 0.0 cm. Run `MeasureTransitions` after
+  EVERY `Import`.
+- **JOINT exit window** (stopping AND striking: `PlayWhenPlanted` waits for the same window): chosen by the worse of the
+  two per phase. Going by the stop alone, UIVO had two phases where the attack slid 18–19 cm. UIVO 0.76–0.96: run→idle
+  3.0 / 9.9, run→attack 6.2 / 9.6 (wait ≤ 0.65 s); GRANIZO walk→idle 1.1 / 3.9, walk→attack 1.3 / 1.8.
+- Measuring a loop by hand requires `SetMoving(true)` / the gait bool: without it the controller goes back to idle in 7
+  frames and the measured "sliding" (146 cm) was the idle being carried. And `MeasureTransitions` runs what
+  `LateUpdate` runs (`DashStep` → `PinStep`, including on the gait's last frame) — otherwise it measures a different engine.
+- Declared limits (UIVO): idle→sprint 44 cm (the dash is born from the run's extended phase — the game enters it from
+  the run); idle→attack 7.2 cm = 60 Hz interpolation of the hind paws between keys at 30 fps (0 in Blender).
+- **Hunt against the dummy** (`CFImporter.BuildHunt(hostDir, targetDir)` → `Assets/Scenes/<HOST>_Hunt.unity`,
+  `CFHunt`): all the clips of a hunter with a dash, in alternating rounds (victory / hit + death), clip caption on
+  screen, a camera that follows, health bar. Where the target sits is MEASURED: bite reach (the furthest-forward skin
+  above the paws at the attack's 1st `hit`: 1.016 m), the dash exit's carry (0.28 m) and the target's face at bite
+  height (0.184 m) → the bite goes 2–4 cm into the face. The dash's own bite (0.797 m) closes in the air ~0.5 m short
+  (`dashBites` false). Video: `CFFrameRecorder` (fixed 60 fps) + `CFHunt.RestartFromTop()`.
+  Against the "robotic" look in the engine (r2): bites CHAINED on the attack's `interrupt` event (`chainEvent`), each at
+  its own speed (0.93–1.07, golden-ratio sequence: `BiteSpeed`) — attack → idle → attack was a reset; death starts
+  halfway through the hit (`deathAt` 0.5) instead of after the whole recovery. Camera (`cameraMode`, key C):
+  `Top` = the game camera (56° elevation, fov 38), `Side` = the old one, `TopAndSide` (default) = top-down + the side
+  view in an inset (`insetRect`, "Side Inset Camera" copied from the main one, depth +1).
+- **Wind effect** (`fx.py` type `wind`, landmarks `fx.wind`): arcs at the muzzle + streaks that stay in the WORLD; they
+  go into the FBX like any effect (`Fx*` bones by scale, additive material). The clip is in place, so streaks and dust
+  already move BACKWARD in the clip by however far the ground moved (`ground_travel`): when the engine carries the unit
+  forward at the clip's speed, they stay still in the world. Only valid if the unit moves at the manifest's `ground_speed_m_s`.
+- **First bite = `dash_bite`** (r3): `CFHunt.dashBiteClip` plays at the end of the dash when the controller has the clip
+  (`HasClip`); the following bites chain in the attack. `BuildHunt` measures where the target sits from the `hit` of
+  the FIRST bite's clip (`first_bite` in the JSON; carry 0.0 m). Unity: sprint → dash_bite 2.1 cm vs. sprint → attack 10.3.
+- **A unit without a weapon has no hand prop**: `export.py` put `UIVO_Hammer` in the manifest because `cf_weapon_prop`
+  had "hammer" as its default. Now: no key in the rig and no `<NAME>_<prop>` object → no prop (`prop`/`hand_prop` = "").
+- Open after r3: idle → attack 8.4 cm and idle → hit 9.9 cm (ball of the paw; a standing → standing `PinStep` would
+  cancel the planned slide of the hit), run → attack waits for the window, the wind renderer isn't turned off outside
+  the gaits, `sprint_loop` rows in `MeasureTransitions`, a cap on `maxPhaseWait`.
+- **A new base pose changes the whole table** (UIVO r4, crouched with paws spread): the mean improves (run → idle 5.5 →
+  4.3, run → attack 8.8 → 6.8 cm), but whatever goes from a paws-TOGETHER pose to home gets worse — dash interrupted by
+  death / hit / victory 4–9 → 8.5–11.3 cm (the dash landing vs. home's spread paws). The hunt path (sprint → dash_bite)
+  stayed at 2.1 cm because `dash_bite` brings in the new pose only in the recovery, with each paw in the air. Run
+  `MeasureTransitions` and compare with the previous table on every base-pose change.
 
-## 3. O que a engine não conserta
+## 3. What the engine doesn't fix
 
-Gatilho no pé errado ainda arrasta 23–30 cm sem clipe de transição: é limite declarado, não bug do importador. Se o
-jogo exigir menos, a saída é autorar o clipe de transição ou esperar a fase (`leave_phase`).
+A trigger on the wrong foot still drags 23–30 cm without a transition clip: that is a declared limit, not an importer
+bug. If the game demands less, the way out is to author the transition clip or to wait for the phase (`leave_phase`).

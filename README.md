@@ -39,10 +39,30 @@ Or copy `plugins/character-factory/skills/*` into your project's `.claude/skills
 | `character-engine` | FBX export with a contract manifest, automatic Unity import (materials, events, Animator, LODs, additive FX), transitions that stop on the right foot | FBX round trip ≤ 0.05 cm; import `ok=True`; foot-slide table per transition |
 | `character-show` | Several characters together: summoner and summons, a training dummy that topples, rounds with health, duels and battles. Game rules are simulated in Blender and mirrored in Unity. | planted foot ≤ 0.1 cm per frame in curves; the script of events matches in both engines |
 
+## Latest techniques in the skills
+
+- **A quadruped (UIVO, a wolf):** its own rig and pose test, four-paw gaits (run and sprint), a dash bite, and four
+  planted paws in Unity.
+- **Living eyes on a single textured mesh (CENTELHA):** Tripo gives no eyeball, so each eye gets one leaf bone with its
+  pivot 4.7 cm behind the painted surface. A blink is a vertical scale of that bone, and the eyes lead the head by 2–3
+  frames.
+- **An area spell that pins a pack from below:** generic `fx.py` extensions:
+  - lightning between fixed points on the floor and the targets' knees;
+  - `arc_min`, so short arcs keep their width on screen;
+  - crystals that grow around each target.
+- **A lying body that floats after the springs:** secondary motion lifted a thigh 41–51 mm off the floor. The fix
+  re-settles the trunk after the springs (`floor_resettle`).
+- **One idea, magnified (GRANIZO v3):** one design idea, "he IS the glacier", pushed through the model, every clip and
+  the VFX.
+- **Game feel on a test bench:** hit-stop, camera shake, a 1:1 game-size view and a lab with buttons, including a "Death
+  Ray".
+- **A split-screen 60 fps reel:** every character runs on one schedule, with one layer and one render texture per
+  panel (`CFSplitReel`).
+
 ## Read this before using them
 
-- **The skills are in Portuguese (pt-BR).** Claude follows them fine. The tables, numbers and file names read the same
-  in any language.
+- **Written in Portuguese, translated here.** The skills were written in pt-BR while the pipeline was being built.
+  This repo holds the English translation, with the same numbers, file names and code.
 - **They drive a private toolchain that is not in this repo:**
   - Python tools: `factory/cf/*.py` and `factory/blender/*.py`;
   - shell scripts: `clip.sh`, `contacts.sh` and others;
@@ -86,7 +106,7 @@ vivo no Blender, via MCP.
 
 - **Instalação:** use os comandos da seção *Install* acima.
 - **O que você precisa saber:**
-  - as skills estão em português;
+  - as skills estão em inglês (foram escritas em português enquanto a esteira era construída);
   - elas comandam ferramentas que não estão neste repositório (`factory/cf`, `factory/blender` e o C# da Unity).
 
   Leia as skills como um manual: a ordem dos estágios, os portões com número e as lições com a medida que as provou.

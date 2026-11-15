@@ -1,220 +1,223 @@
 ---
 name: character-design
-description: Desenhar um personagem da Character Factory de modo que ele CAIBA na animação, e gerá-lo no Tripo web — brief de uma página, regras de desenho que vêm dos portões do modelo (braço, corredor da cabeça, cabo), concept em T-pose com GPT Image 2.5, vistas ortogonais, modelo 3D multivista H3.1 Ultra e props como objetos separados. Use quando o usuário pedir um personagem novo, um concept, uma arma/acessório novo, "gera no Tripo", ou quando um portão do modelo reprovar e a saída for redesenhar. Inclui as regras de LEITURA no jogo: silhueta a 64 px na câmera de jogo (não em close), essência em 1–2 traços amplificados, estilo boneco de ação em miniatura e o rosto para os closes (vitória, desbloqueio).
+description: Design a Character Factory character so that it FITS the animation, and generate it on Tripo web — a one-page brief, drawing rules that come from the model gates (arm, head corridor, handle), a T-pose concept with GPT Image 2.5, orthographic views, a multiview H3.1 Ultra 3D model and props as separate objects. Use when the user asks for a new character, a concept, a new weapon/accessory, "generate it on Tripo", or when a model gate fails and the way out is to redraw. Includes the in-game READABILITY rules: silhouette at 64 px in the game camera (not in close-up), essence in 1–2 amplified traits, a miniature action-figure style and the face for the close-ups (victory, unlock).
 ---
 
-# Desenho e geração (brief → concept → GLB)
+# Design and generation (brief → concept → GLB)
 
-O que se decide aqui custa minutos; o mesmo erro descoberto depois dos clipes custa rodadas inteiras. O primeiro
-personagem (BRASA) ficou com três limites que nenhuma animação tirou — todos eram do desenho. Por isso o brief já nasce
-com as regras abaixo, e o `model_gates.py` (skill `character-rig`) confere no modelo gerado.
+What is decided here costs minutes; the same mistake found after the clips costs whole rounds. The first character
+(BRASA) ended up with three limits that no animation could remove — all of them came from the drawing. That is why the
+brief is born with the rules below, and `model_gates.py` (skill `character-rig`) checks them on the generated model.
 
-## 0. Leitura, essência e escala — decida ANTES do brief (princípios de jogo 1–4, 7)
+## 0. Readability, essence and scale — decide BEFORE the brief (game principles 1–4, 7)
 
-Uma unidade de jogo mobile é vista a ~64 px de altura, de cima (câmera de jogo 55°, fov 38), durante 1–3 s por vez. Tudo
-nesta seção existe porque o jogador decide "quem é e o que está fazendo" num relance. A régua é a do laboratório da
-arena (skill `character-show` §9d, tecla G): a câmera do jogo num telefone de 360 × 640 px, colocada para que uma
-unidade de 1,4 m em pé no centro tenha 64 px. Nessa escala **1 px ≈ 2,2 cm**: o que tem menos de 4–5 cm (2 px) não
-existe, o que mexe menos de 2 px não mexeu.
+A mobile game unit is seen at ~64 px tall, from above (game camera 55°, fov 38), for 1–3 s at a time. Everything in
+this section exists because the player decides "who is it and what is it doing" at a glance. The yardstick is the one
+from the arena lab (skill `character-show` §9d, key G): the game camera on a 360 × 640 px phone, placed so that a
+1.4 m unit standing in the center is 64 px tall. At that scale **1 px ≈ 2.2 cm**: anything under 4–5 cm (2 px) does
+not exist, anything that moves less than 2 px did not move.
 
-### 0a. Leitura primeiro (um relance = quem é + o que faz)
+### 0a. Readability first (one glance = who it is + what it does)
 
-- **Julgue sempre na câmera de jogo, no tamanho de jogo**, nunca num close do Blender. O close engana: o OCASO é um
-  necromante de rosto de caveira em close; no laboratório, de cima, a 1:1, ele é um DOMO roxo (o manto) com o gancho
-  do cajado saindo — 97 × 88 px na tela; o crânio e o capuz não se separam da massa. O ALVOR lê pela lâmina diagonal
-  que sai da silhueta (113 × 123 px); escudo + elmo viram um bloco só. O FERRUGEM lê como caixa com garras (72 px).
-  Esses números e silhuetas estão em `env/duel/shots/lab/` — compare o seu personagem com eles.
-- **A câmera de jogo vê o TOPO**: topo da cabeça, ombros, costas, o prop. Ponha a identidade onde ela vê: forma do
-  chapéu / capuz / chifres, o prop por cima do ombro ou para fora do corpo, uma cor de destaque no topo. O rosto é para
-  os momentos de close (0d), não para a leitura em jogo.
-- **Teste de silhueta antes de gastar crédito**: concept em T-pose E um esboço 3/4 de cima reduzidos a 64 px de altura,
-  preenchidos de preto (limiar no PNG: `python3 -c` com PIL, `img.convert('L').point(lambda v: 0 if v < 200 else 255)`),
-  ao lado das silhuetas dos aprovados (`env/duel/shots/lab/inset_pair.png`). Portão: nomeie a unidade só pela mancha —
-  se ela confunde com outra, mude a FORMA (não a cor).
-- **Linguagem de forma por papel** (uma por unidade, legível de longe): bruto = bloco/quadrado (FERRUGEM, GRANIZO),
-  conjurador = triângulo/domo com uma vertical (OCASO + cajado), herói = V largo em cima com uma diagonal (ALVOR +
-  espada), invocado = pequeno, magro, repetido (OSSINHO). Duas unidades do mesmo elenco não dividem a mesma forma.
-- **O prop-assinatura sai da silhueta**: ≥ 1/3 da altura, e para FORA do contorno do corpo na pose de idle vista de
-  cima (lâmina diagonal, cajado vertical com gancho, martelo maior que a cabeça). Prop colado no corpo some no domo.
-- **Valor antes de cor**: as 2–3 massas grandes vizinhas com ≥ 20 % de diferença de luminância (o interior da silhueta
-  lê a 64 px), e o corpo contrastando com o chão: a grama renderizada da arena é (99, 168, 75) — nada de verde médio
-  como cor dominante de unidade.
+- **Always judge in the game camera, at game size**, never in a Blender close-up. The close-up lies: OCASO is a
+  skull-faced necromancer in close-up; in the lab, from above, at 1:1, he is a purple DOME (the cloak) with the hook
+  of the staff sticking out — 97 × 88 px on screen; the skull and the hood do not separate from the mass. ALVOR reads
+  by the diagonal blade that leaves the silhouette (113 × 123 px); shield + helm become a single block. FERRUGEM reads
+  as a box with claws (72 px). Those numbers and silhouettes are in `env/duel/shots/lab/` — compare your character with them.
+- **The game camera sees the TOP**: top of the head, shoulders, back, the prop. Put the identity where it looks: the
+  shape of the hat / hood / horns, the prop over the shoulder or sticking out of the body, an accent color on top. The
+  face is for the close-up moments (0d), not for in-game reading.
+- **Silhouette test before spending credits**: the T-pose concept AND a 3/4 sketch from above, scaled down to 64 px tall,
+  filled black (threshold on the PNG: `python3 -c` with PIL, `img.convert('L').point(lambda v: 0 if v < 200 else 255)`),
+  next to the silhouettes of the approved ones (`env/duel/shots/lab/inset_pair.png`). Gate: name the unit from the blob
+  alone — if it gets confused with another one, change the SHAPE (not the color).
+- **Shape language by role** (one per unit, readable from afar): brute = block/square (FERRUGEM, GRANIZO),
+  caster = triangle/dome with a vertical (OCASO + staff), hero = wide V on top with a diagonal (ALVOR +
+  sword), summon = small, thin, repeated (OSSINHO). Two units in the same cast do not share the same shape.
+- **The signature prop leaves the silhouette**: ≥ 1/3 of the height, and OUTSIDE the body outline in the idle pose
+  seen from above (diagonal blade, vertical staff with a hook, hammer bigger than the head). A prop glued to the body
+  vanishes into the dome.
+- **Value before color**: the 2–3 large neighboring masses with ≥ 20 % luminance difference (the inside of the silhouette
+  reads at 64 px), and the body contrasting with the ground: the arena's rendered grass is (99, 168, 75) — no mid green
+  as a unit's dominant color.
 
-### 0b. Ache a essência e AMPLIFIQUE (1–2 traços, não um catálogo)
+### 0b. Find the essence and AMPLIFY it (1–2 traits, not a catalog)
 
-- Pesquise o arquétipo (quem é, de onde vem, como se move) e escreva no brief uma seção **Essência**: no máximo DOIS
-  traços, cada um com um adjetivo e um verbo ("teimoso — investe de cabeça"; "frio — nunca se apressa"). Mais que dois
-  e nenhum lê a 64 px.
-- Cada traço vira uma decisão de FORMA e uma de MOVIMENTO por clipe, numa tabela no brief:
+- Research the archetype (who it is, where it comes from, how it moves) and write an **Essence** section in the brief: at
+  most TWO traits, each with an adjective and a verb ("stubborn — charges head first"; "cold — never hurries"). More
+  than two and none of them reads at 64 px.
+- Each trait becomes one SHAPE decision and one MOTION decision per clip, in a table in the brief:
 
-  | Traço | Forma (o que a silhueta mostra) | idle | andar | ataque | dano | morte | close (vitória) |
+  | Trait | Shape (what the silhouette shows) | idle | walk | attack | hit | death | close-up (victory) |
   |---|---|---|---|---|---|---|---|
 
-  Exemplo (leitura do que as unidades aprovadas já fazem): GRANIZO "lento e inevitável" → maior do elenco (1,55 m),
-  marreta enorme; andar de 30 quadros (120 passos/min), ataque com preparo longo (evento a 1,30 s) e golpe curto;
-  OCASO "frio, manipulador" → domo + cajado plantado; nunca corre (0,32 m/s), o momento-herói é a invocação.
-- **Empurre até ler**: cada traço precisa de UMA coisa grande e específica (um gesto de 20°+ de cabeça, um prop que
-  pesa, uma postura curvada de 15°+), não de cinco sutis. Regra: no máximo 3 ideias de desenho por unidade (forma,
-  prop, cor de destaque); detalhe que não lê a 64 px sai ou cresce 1,5–2×.
-- O crítico de princípios (skill `character-review`) recebe a seção Essência e responde por clipe: "o traço X aparece?".
+  Example (a reading of what the approved units already do): GRANIZO "slow and inevitable" → biggest of the cast (1.55 m),
+  a huge sledgehammer; a 30-frame walk (120 steps/min), an attack with a long wind-up (event at 1.30 s) and a short strike;
+  OCASO "cold, manipulative" → dome + planted staff; never runs (0.32 m/s), his hero moment is the summon.
+- **Push until it reads**: each trait needs ONE big, specific thing (a head gesture of 20°+, a prop with real
+  weight, a hunched posture of 15°+), not five subtle ones. Rule: at most 3 design ideas per unit (shape,
+  prop, accent color); a detail that does not read at 64 px goes, or grows 1.5–2×.
+- The principles critic (skill `character-review`) receives the Essence section and answers per clip: "does trait X show?".
 
-### 0c. Estilo na escala: "boneco de ação em miniatura"
+### 0c. Style at scale: "miniature action figure"
 
-Estilo detalhado não traduz para mobile. A casa usa o boneco colecionável atarracado (Clash Royale / Warcraft Rumble),
-com regras que se medem no concept:
-- **Cabeça** 1/4–1/3 da altura (OSSINHO 0,67 m ≈ 1/3; heróis ≈ 1/4); **mãos** ≥ 1,3× a proporção real; **prop** ≥ 0,6×
-  a altura do corpo; pés/base largos (a unidade não pode parecer na ponta dos pés vista de cima).
-- **Formas grossas e chanfradas**: nenhuma peça com menos de 4–5 cm de espessura (2 px); alças, correntes, dedos
-  separados e franjas finas não leem — viram uma massa (mão em placa, cinto largo, franja em 3 pontas grossas).
-- **Poucos blocos de cor**: 3–4 cores principais + 1 destaque; a textura PBR pintada à mão REFORÇA a forma (luz no
-  topo, oclusão nas dobras), nunca carrega a identidade sozinha.
-- **Proporção ousada > anatomia correta** (§4b): o portão do modelo pode reprovar por escolha (OCASO `overhead` 0,66) —
-  isso se declara no brief com o gesto que cabe no lugar.
+Detailed style does not translate to mobile. The house uses the stocky collectible figure (Clash Royale / Warcraft Rumble),
+with rules you can measure on the concept:
+- **Head** 1/4–1/3 of the height (OSSINHO 0.67 m ≈ 1/3; heroes ≈ 1/4); **hands** ≥ 1.3× real proportion; **prop** ≥ 0.6×
+  the body height; wide feet/base (seen from above, the unit must not look like it is standing on tiptoe).
+- **Thick, chamfered shapes**: no piece thinner than 4–5 cm (2 px); straps, chains, separate fingers
+  and thin fringes do not read — they turn into one mass (plate hand, wide belt, fringe as 3 thick points).
+- **Few color blocks**: 3–4 main colors + 1 accent; the hand-painted PBR texture REINFORCES the shape (light on
+  top, occlusion in the folds), it never carries the identity on its own.
+- **Bold proportion > correct anatomy** (§4b): the model gate may fail by choice (OCASO `overhead` 0.66) —
+  that is declared in the brief together with the gesture that fits instead.
 
-### 0d. Momentos de close (desbloqueio, vitória, menu) = onde mora o charme
+### 0d. Close-up moments (unlock, victory, menu) = where the charm lives
 
-- Em jogo a unidade é uma silhueta; o rosto aparece nos closes. A arena já tem o take **Retrato** (tecla 9; automático
-  depois de um nocaute): o vencedor vira para a câmera e **inclina ~7° para trás** em torno dos pés, câmera à altura do
-  rosto, fov 28, rosto no terço superior, cartão de vitória no terço inferior (`env/duel/shots/lab/retrato_alvor_s.jpg`).
-- Desenhe o rosto PARA esse take: feições grandes e de alto contraste (sobrancelha, olho, boca — ou o "rosto" de uma
-  máquina: a escotilha do FERRUGEM lê no Retrato), linha dos olhos visível com a cabeça erguida 5–10°, nada na frente
-  do rosto no idle (mão, prop, aba do capuz).
-- Escreva no brief UMA expressão por momento (vitória, derrota, desbloqueio) e COMO ela é feita: pose de corpo + cabeça
-  (sempre), mandíbula / pálpebra / sobrancelha (2–4 ossos, skill `character-rig` §0) ou troca de textura / emissão do
-  olho. Hoje nenhum aprovado tem osso de rosto: é a primeira coisa a pedir no próximo brief.
+- In game the unit is a silhouette; the face shows up in the close-ups. The arena already has the **Portrait** take
+  ("Retrato", key 9; automatic after a knockout): the winner turns to the camera and **leans back ~7°** around the
+  feet, camera at face height, fov 28, face in the upper third, victory card in the lower third
+  (`env/duel/shots/lab/retrato_alvor_s.jpg`).
+- Draw the face FOR that take: big, high-contrast features (eyebrow, eye, mouth — or the "face" of a
+  machine: FERRUGEM's hatch reads in the Portrait), eye line visible with the head raised 5–10°, nothing in front
+  of the face in the idle (hand, prop, hood brim).
+- Write in the brief ONE expression per moment (victory, defeat, unlock) and HOW it is made: body + head pose
+  (always), jaw / eyelid / eyebrow (2–4 bones, skill `character-rig` §0) or a texture swap / eye
+  emission. Today no approved character has a face bone: it is the first thing to ask for in the next brief.
 
-### 0e. Onde o personagem vive (decide os ossos extras)
+### 0e. Where the character lives (decides the extra bones)
 
-No brief, nomeie as 1–3 partes que carregam personalidade e balançam (orelha, cauda, capa, ponta do capuz, barba,
-chaminé, corrente da arma). Desenhe cada uma como UMA massa grossa com raiz à vista (regra da §2) — vira corrente de
-molas no rig. Todo o resto é rígido. Parte que não balança ≥ 2 px (≈ 5 cm) em nenhum clipe não ganha osso.
+In the brief, name the 1–3 parts that carry personality and swing (ear, tail, cape, hood tip, beard,
+chimney, weapon chain). Draw each one as ONE thick mass with a visible root (rule from §2) — it becomes a spring
+chain in the rig. Everything else is rigid. A part that does not swing ≥ 2 px (≈ 5 cm) in any clip gets no bone.
 
-## 1. Brief (`characters/<id>/brief.md`, uma página)
+## 1. Brief (`characters/<id>/brief.md`, one page)
 
-Copie a estrutura de `characters/granizo/brief.md`: Pitch · **Essência (1–2 traços + a tabela traço × clipe, §0b)** ·
-Look (trava de estilo) · **Leitura (forma por papel, prop que sai da silhueta, topo visto de cima, §0a)** · Objetos
-separados · Regras de geração · Personalidade → notas de animação · **Close (expressão por momento, §0d)** · Clipes. O estilo da casa: miniatura colecionável atarracada (Clash Royale /
-Warcraft Rumble), PBR pintado à mão, formas grossas, silhueta legível a 64 px, nada fino ou solto.
+Copy the structure of `characters/granizo/brief.md`: Pitch · **Essence (1–2 traits + the trait × clip table, §0b)** ·
+Look (style lock) · **Readability (shape by role, prop that leaves the silhouette, top seen from above, §0a)** · Separate
+objects · Generation rules · Personality → animation notes · **Close-up (expression per moment, §0d)** · Clips. The house style: stocky collectible miniature (Clash Royale /
+Warcraft Rumble), hand-painted PBR, thick shapes, silhouette readable at 64 px, nothing thin or loose.
 
-## 2. Regras de desenho (cada uma tem um número por trás)
+## 2. Drawing rules (each one has a number behind it)
 
-| Regra | Por quê (medido no BRASA) |
+| Rule | Why (measured on BRASA) |
 |---|---|
-| **T-pose**: braços retos para os lados, palmas para baixo, dedos juntos, **mãos vazias**, pernas levemente afastadas | A-pose a 35° fundiu axila e manopla no tronco de um personagem atarracado: rasgo em close |
-| Braço (ombro→pulso) ≥ 1,1 × distância do ombro a um ponto logo acima do topo do crânio | portão `overhead`: com braço curto a arma de duas mãos não passa por cima da cabeça; foi preciso alongar 20 % no modelo |
-| Nada na cabeça mais largo que a cabeça: envergadura (chifres, cristas, orelhas) ≤ largura dos ombros − espessura do braço | portão `corridor` 0,70: chifre 34 mm dentro do braço em 15 quadros; 17 poses tentadas, nenhuma resolveu |
-| Cabo fino na pegada (mais fino que o pulso), mãos grandes com dedos tão longos quanto a palma | portão `wrap` 0,31: os dedos fechavam 34° antes de tocar um cabo de 10–12 cm → punho estilizado |
-| Braçadeiras/manoplas retas, sem aba alargada, **mais finas que o punho fechado no lado do pulso** e começando 3–4 cm antes dele | a aba raspava no pomo sempre que o pulso dobrava; no GRANIZO o bracelete (13–16 cm de raio, punho 12,5) começa NO pulso: todo cabo a menos de ~50° do antebraço atravessa a borda (35 mm, 7–24 quadros por clipe) |
-| Polegar AO LADO da palma (aberto para a frente), nunca dobrado sob ela | GRANIZO veio com o polegar apontando para baixo sob a palma: `fist_fit.py` não acha envolvimento em nenhuma estação do cabo → punho estilizado declarado |
-| Braço (ombro→pulso) ≥ quanto o tronco projeta à frente da linha dos ombros + 10 cm | FERRUGEM: caldeira 0,44 × braço 0,41 — o punho nunca passa na frente do corpo; o golpe sai nas laterais e só a mão + garras atravessam |
-| Peças redondas nos ombros (tambores, ombreiras altas) contam como envergadura da cabeça | FERRUGEM: corredor 0,926 e overhead 0,665 por causa dos tambores — sem arma, declarado como limite |
-| Ombros largos pedem braço proporcional: (meia largura dos ombros) ÷ (ombro→pulso) ≤ ~0,6 | GRANIZO 0,40 ÷ 0,64: a mão do pomo cai 13–17 cm por dentro do próprio ombro e o antebraço deita no cabo; as chaves portadas precisaram de +7 cm para o lado |
-| Cabeça afundada entre os ombros (sem pescoço) é permitida, mas então a cabeça quase não gira: o tronco vira | queixo e presas entram até 62 mm no peito/ombros quando a cabeça inclina; os ossos do pescoço não podem segurar pele do peito (regra `neck_not_chest`) |
-| Nada rígido na linha dos ombros/cabeça (ombreira alta, chaminé); prop de costas BAIXO, mais estreito que o tronco | ombreira 22–63 mm dentro do capacete; mochila batendo na cabeça no recuo |
-| Todo acessório rígido (arma, mochila, escudo) é **objeto separado**, gerado sozinho | soldado no corpo rasga igual à arma |
-| Pele lisa nas dobras (ombro, cotovelo, quadril); cinto alto e simples | fivela e cinto esmagavam no impacto; pele lisa é onde o peso distribui bem e onde dá para alongar no modelo |
-| Detalhes rígidos da cabeça (presas, sobrancelhas) NÃO da cor da massa mole | presas marfim = cor do cabelo: a classe de cor pegou as presas; foi preciso caixa + cor |
-| Massa mole (barba, rabo de cavalo) = UMA massa grossa, de cor distinta, com raiz à vista | vira ilha + corrente de molas; raiz enterrada sob casca rígida é sobreposição permanente |
-| Um marcador assimétrico (alça num ombro, presa quebrada) | é assim que se confere esquerda/direita em cada vista e no modelo |
-| Dedos separados e ABERTOS na T-pose, e CONTE-os na imagem e no modelo | ALVOR veio com seis dedos na mão direita: `remove_stub.py` + `skin_patch.py` consertam, mas custa uma rodada |
-| Escudo: gerado sozinho, com ALÇA visível nas costas, e grande o bastante para o antebraço caber atrás da placa com o punho na alça (≈ 0,3 × 0,5 da altura do personagem) | ALVOR: escudo do tamanho gerado deixava a mão fora da alça; 1,3× (0,47 × 0,73 m para 1,5 m) resolveu. Ele é SEGURADO na mão, na frente do corpo |
-| Sem brilho pintado: peça "matte, no painted highlights, no glow" e ligue "remover iluminação" | "a luz que vem do Tripo" = metal 1,0 + brilho na textura; `matte.py` tira o metal, não o brilho pintado |
-| Pense na pegada ao escolher a pose das mãos | bind de palmas para baixo + mão de cima pegando por baixo = meia-volta de torção no antebraço (107–145°) |
+| **T-pose**: arms straight out to the sides, palms down, fingers together, **empty hands**, legs slightly apart | An A-pose at 35° fused armpit and gauntlet into the torso of a stocky character: a tear in close-up |
+| Arm (shoulder→wrist) ≥ 1.1 × the distance from the shoulder to a point just above the top of the skull | `overhead` gate: with a short arm the two-handed weapon does not pass over the head; it had to be lengthened 20 % on the model |
+| Nothing on the head wider than the head: span (horns, crests, ears) ≤ shoulder width − arm thickness | `corridor` gate 0.70: horn 34 mm inside the arm in 15 frames; 17 poses tried, none solved it |
+| Thin handle at the grip (thinner than the wrist), big hands with fingers as long as the palm | `wrap` gate 0.31: the fingers closed 34° before touching a 10–12 cm handle → stylized fist |
+| Vambraces/gauntlets straight, with no flared lip, **thinner than the closed fist on the wrist side** and starting 3–4 cm before the wrist | the lip scraped the pommel whenever the wrist bent; on GRANIZO the bracer (13–16 cm radius, fist 12.5) starts AT the wrist: every handle at less than ~50° from the forearm goes through the rim (35 mm, 7–24 frames per clip) |
+| Thumb BESIDE the palm (open, pointing forward), never folded under it | GRANIZO came with the thumb pointing down under the palm: `fist_fit.py` finds no wrap at any station along the handle → declared stylized fist |
+| Arm (shoulder→wrist) ≥ how far the torso projects in front of the shoulder line + 10 cm | FERRUGEM: boiler 0.44 × arm 0.41 — the fist never passes in front of the body; the strike comes out at the sides and only the hand + claws go through |
+| Round pieces on the shoulders (drums, tall pauldrons) count as head span | FERRUGEM: corridor 0.926 and overhead 0.665 because of the drums — no weapon, declared as a limit |
+| Wide shoulders call for a proportional arm: (half shoulder width) ÷ (shoulder→wrist) ≤ ~0.6 | GRANIZO 0.40 ÷ 0.64: the pommel hand falls 13–17 cm inside its own shoulder and the forearm lies along the handle; the ported keys needed +7 cm to the side |
+| A head sunk between the shoulders (no neck) is allowed, but then the head barely turns: the torso turns | chin and tusks go up to 62 mm into the chest/shoulders when the head tilts; the neck bones must not hold chest skin (rule `neck_not_chest`) |
+| Nothing rigid on the shoulder/head line (tall pauldron, chimney); a back prop sits LOW, narrower than the torso | pauldron 22–63 mm inside the helmet; backpack hitting the head on the recoil |
+| Every rigid accessory (weapon, backpack, shield) is a **separate object**, generated on its own | welded to the body, it tears just like the weapon |
+| Smooth skin at the folds (shoulder, elbow, hip); a high, simple belt | buckle and belt got crushed on impact; smooth skin is where the weight distributes well and where it can be lengthened on the model |
+| Rigid head details (tusks, eyebrows) NOT the color of the soft mass | ivory tusks = hair color: the color class grabbed the tusks; it took a box + color |
+| Soft mass (beard, ponytail) = ONE thick mass, of a distinct color, with a visible root | it becomes an island + spring chain; a root buried under a rigid shell is permanent overlap |
+| One asymmetric marker (strap on one shoulder, broken tusk) | that is how left/right gets checked in every view and on the model |
+| Fingers separate and OPEN in the T-pose, and COUNT them in the image and on the model | ALVOR came with six fingers on the right hand: `remove_stub.py` + `skin_patch.py` fix it, but it costs a round |
+| Shield: generated on its own, with a visible STRAP on the back, and big enough for the forearm to fit behind the plate with the fist in the strap (≈ 0.3 × 0.5 of the character's height) | ALVOR: the shield at its generated size left the hand outside the strap; 1.3× (0.47 × 0.73 m for 1.5 m) solved it. It is HELD in the hand, in front of the body |
+| No painted shine: ask for "matte, no painted highlights, no glow" and turn on "remove lighting" | "the light that comes from Tripo" = metal 1.0 + shine in the texture; `matte.py` removes the metal, not the painted shine |
+| Think about the grip when choosing the hand pose | palms-down bind + the top hand gripping from below = a half-turn of twist in the forearm (107–145°) |
 
-## 3. Tripo web (Chrome já logado; use as ferramentas `claude-in-chrome`)
+## 3. Tripo web (Chrome already logged in; use the `claude-in-chrome` tools)
 
-Gerar no Tripo com GPT Image 2.5 é decisão do usuário (o gerador da Runware não obedecia à T-pose).
+Generating on Tripo with GPT Image 2.5 is the user's decision (the Runware generator did not obey the T-pose).
 
-1. **Imagem** (ícone no topo da barra esquerda) → modelo **GPT Image 2.5**. Prompt em inglês com: estilo, descrição,
-   POSE em maiúsculas (T-pose, palmas para baixo, mãos vazias), "no weapon, nothing on the back", fundo branco, luz
-   uniforme, câmera frontal sem perspectiva. Para manter o estilo da casa, anexe como referência o
-   `refs/tpose_front.png` de um personagem aprovado e escreva "same art style … but a COMPLETELY DIFFERENT character".
-   Proporção 4:3 (T-pose é larga), 2 imagens (8 créditos).
-2. Confira na imagem, antes de gastar no 3D: T-pose de verdade, mãos vazias e abertas, marcador assimétrico no lado
-   certo (o lado ESQUERDO dele fica à DIREITA de quem olha), braço/cabeça dentro das regras (meça em pixels).
-3. **Vistas**: o botão "Gerar multivisões" da imagem (ícone de cubo ao passar o mouse) às vezes devolve vistas oblíquas
-   (aconteceu duas vezes seguidas no GRANIZO). Se as quatro não forem frente / perfil esquerdo / perfil direito / costas
-   retos, gere cada vista com GPT Image 2.5 usando a frente como referência e um prompt explícito ("strict 90-degree
+1. **Image** (icon at the top of the left bar) → model **GPT Image 2.5**. Prompt in English with: style, description,
+   POSE in caps (T-pose, palms down, empty hands), "no weapon, nothing on the back", white background, even
+   lighting, frontal camera with no perspective. To keep the house style, attach the `refs/tpose_front.png` of an
+   approved character as reference and write "same art style … but a COMPLETELY DIFFERENT character".
+   Aspect ratio 4:3 (a T-pose is wide), 2 images (8 credits).
+2. Check the image before spending on 3D: a real T-pose, hands empty and open, asymmetric marker on the correct
+   side (HIS LEFT side is on the viewer's RIGHT), arm/head within the rules (measure in pixels).
+3. **Views**: the image's "Generate multiview" button (cube icon on hover) sometimes returns oblique views
+   (it happened twice in a row on GRANIZO). If the four are not straight front / left profile / right profile / back,
+   generate each view with GPT Image 2.5 using the front as reference and an explicit prompt ("strict 90-degree
    profile, he faces the LEFT edge of the image, his left arm points straight at the camera…", "seen from DIRECTLY
-   BEHIND…"). Perfil esquerdo = câmera à esquerda dele = ele olha para a esquerda da imagem.
-4. Baixe cada imagem (seta ao passar o mouse). **Confira para onde o Chrome do perfil baixa** (`chrome://settings/downloads`:
-   nem sempre é `~/Downloads`); os nomes se repetem
-   (`image_0.png`), então mova uma de cada vez para `characters/<id>/refs/view_{front,left,right,back}.png`.
-5. **Modelo** (segundo ícone) → aba de multivista (ícone de cubo) → suba Frente / Esquerda / Direita / Verso →
-   "Geometria e textura": malha Ultra, textura 4K, remover iluminação, PBR, triângulos, 2.000.000 → **H3.1 – Máx.
-   qualidade** → Gerar (55 créditos, alguns minutos).
-6. Exportar → GLB → mover para `characters/<id>/model/<id>_hi.glb` (a versão de 2 M de triângulos: referência de
-   forma e fonte de bake).
-6b. **Sempre Remesh → Smart UV → Textura** (regra do usuário, 2026-11-14, UIVO): o UV que o Tripo gera com a malha
-   é picado em centenas de ilhas (58 % de ocupação no UIVO) — ninguém repinta isso depois. O Smart UV (barra esquerda)
-   só aceita ≤ 80.000 triângulos, então: **Remesh** → Triângulo, "Malha Smart" DESLIGADA (com ela o teto é 20.000 e
-   custa 35; sem ela vai até 150.000 e custa 5) → **60.000** (o orçamento de jogo) → Retopologia; depois **Smart UV**
-   no resultado (20 créditos); depois **Textura** (4K, PBR, sem iluminação). Exportar → GLB →
-   `model/<id>_game.glb`. Essa é a malha de jogo: UV limpo, textura repintável; o `gameready.py` só reassa se precisar.
-   Orçamento: o usuário autoriza **até 5.000 créditos do Tripo** por personagem para este fluxo (remesh, Smart UV,
-   textura e as repetições que a qualidade pedir) — não economize nele; anote cada gasto no `state.json → tripo`.
-6c. **Mandíbula SEMPRE aberta** no concept deste estilo (regra do usuário): "mouth open ~25 deg, upper and lower teeth
-   apart, tongue inside" no prompt de TODA vista, e confira na imagem antes do 3D — boca soldada não ganha osso de
-   mandíbula, e a mordida, o rugido, o uivo e o ofegar da corrida vivem nela (UIVO: `DEF-jaw` + regras de peso
-   `lower_jaw` / `upper_muzzle` / `throat` em `characters/uivo/rig/landmarks.json`).
-7. **Cada prop é outra geração**: imagem isolada (objeto inteiro, vertical, fundo branco, com o concept do personagem
-   como referência de estilo) → "Gerar 3D" de imagem única → GLB em `model/<id>_<prop>_hi.glb`. Meça o cabo na imagem
-   (largura ÷ comprimento) antes de gerar.
+   BEHIND…"). Left profile = camera on his left = he looks toward the left of the image.
+4. Download each image (arrow on hover). **Check where this Chrome profile downloads** (`chrome://settings/downloads`:
+   not always `~/Downloads`); the names repeat (`image_0.png`), so move one at a time to
+   `characters/<id>/refs/view_{front,left,right,back}.png`.
+5. **Model** (second icon) → multiview tab (cube icon) → upload Front / Left / Right / Back →
+   "Geometry and texture": Ultra mesh, 4K texture, remove lighting, PBR, triangles, 2,000,000 → **H3.1 – Max
+   quality** → Generate (55 credits, a few minutes).
+6. Export → GLB → move to `characters/<id>/model/<id>_hi.glb` (the 2 M triangle version: shape reference
+   and bake source).
+6b. **Always Remesh → Smart UV → Texture** (the user's rule, 2026-11-14, UIVO): the UV that Tripo generates with the mesh
+   is chopped into hundreds of islands (58 % occupancy on UIVO) — nobody repaints that later. Smart UV (left bar)
+   only accepts ≤ 80,000 triangles, so: **Remesh** → Triangle, "Smart Mesh" OFF (with it the ceiling is 20,000 and it
+   costs 35; without it it goes up to 150,000 and costs 5) → **60,000** (the game budget) → Retopology; then **Smart UV**
+   on the result (20 credits); then **Texture** (4K, PBR, no lighting). Export → GLB →
+   `model/<id>_game.glb`. That is the game mesh: clean UV, repaintable texture; `gameready.py` only rebakes if needed.
+   Budget: the user authorizes **up to 5,000 Tripo credits** per character for this flow (remesh, Smart UV,
+   texture and whatever retries the quality calls for) — do not skimp on it; log every spend in `state.json → tripo`.
+6c. **Jaw ALWAYS open** in the concept for this style (the user's rule): "mouth open ~25 deg, upper and lower teeth
+   apart, tongue inside" in the prompt of EVERY view, and check it in the image before 3D — a welded mouth gets no jaw
+   bone, and the bite, the roar, the howl and the panting while running all live in it (UIVO: `DEF-jaw` + weight rules
+   `lower_jaw` / `upper_muzzle` / `throat` in `characters/uivo/rig/landmarks.json`).
+7. **Each prop is a separate generation**: isolated image (whole object, vertical, white background, with the character
+   concept as style reference) → single-image "Generate 3D" → GLB at `model/<id>_<prop>_hi.glb`. Measure the handle in
+   the image (width ÷ length) before generating.
 
-Gerações consomem créditos da conta do usuário: gere 2 opções, escolha, e não repita sem motivo. Anote no `state.json`
-o que foi gerado e o que foi descartado.
+Generations consume credits from the user's account: generate 2 options, pick one, and do not repeat without a reason.
+Log in `state.json` what was generated and what was discarded.
 
-## 4. Depois do GLB
+## 4. After the GLB
 
-O juiz é o `model_gates.py` (skill `character-rig`). Reprovou? Em ordem de custo: alongar/inclinar no modelo
-(`proportions.py`, `part_tilt.py`, reversíveis) → regenerar a imagem com a regra explícita → aceitar como limite
-declarado (e dizer isso ao usuário com o número).
+The judge is `model_gates.py` (skill `character-rig`). Failed? In order of cost: lengthen/tilt on the model
+(`proportions.py`, `part_tilt.py`, reversible) → regenerate the image with the rule made explicit → accept it as a
+declared limit (and tell the user so, with the number).
 
-## 4b. Silhueta primeiro — não um humanoide fantasiado (usuário, 2026-11-11, OCASO v1 → v2)
+## 4b. Silhouette first — not a humanoid in costume (user, 2026-11-11, OCASO v1 → v2)
 
-"nao quero os personagens sempre em humanoides perfeitos... tem que ter mais estilo da foto clash royale." O v1 do
-necromante era um homem de proporção normal com casaco, calça e bota: lia como genérico e foi refeito.
+"I don't want the characters always as perfect humanoids... they need more of the style of the clash royale picture." The
+v1 necromancer was a man of normal proportions with a coat, pants and boots: he read as generic and was redone.
 
-- Comece o brief pela FORMA, não por um corpo: cabeça ≈ 1/3 da altura, mãos e prop enormes, manto até o chão / sino /
-  corcunda / pernas escondidas quando couber, assimetria, atitude. Uma referência dá a LINGUAGEM, nunca o personagem
-  (nada de elmo, barba, cajado ou paleta copiados): o desenho é original.
-- Um mini assim reprova `overhead` / `corridor` por desenho (OCASO 0,66 / 0,70; OSSINHO 0,72). Isso é escolha, não
-  defeito: escreva no brief o que ele NUNCA faz (levantar o braço ao lado do capuz, golpe por cima da cabeça) e dê a
-  ele um gesto que cabe (cajado plantado, garra baixa à frente, corte diagonal).
-- Sem pernas à vista o manto é a base: ele não cambaleia, TOMBA (morte = pêndulo invertido sobre a borda da barra).
-- Unidade invocada = outro personagem (brief, modelo, rig e clipes próprios), menor e mais simples, com o `spawn` no
-  lugar do `hit` se o orçamento for de cinco clipes.
-- **Alvo de treino / prop que apanha** (TOCO) não é personagem: uma imagem só no Tripo (GPT Image 2.5, 2 opções com o
-  prop de um aprovado como referência de estilo) → "Gerar 3D" de imagem única. O que o desenho precisa: um LADO
-  pintado que diga "acerte aqui" (disco de alvo) e que vai olhar para a câmera; massas grossas empilhadas (sacos amarrados,
-  não palha solta — a opção com saia de palha foi descartada); pé LARGO em cruz (é a borda pela qual ele tomba, 0,22–0,27 m
-  num boneco de 1,15 m) com o poste saindo do centro; cabeça separada por um pescoço estreito (vira o 2º pivô das molas).
-  Um marcador esquerda/direita também (remendo num lado do saco).
+- Start the brief from the SHAPE, not from a body: head ≈ 1/3 of the height, huge hands and prop, floor-length cloak / bell /
+  hunch / hidden legs where it fits, asymmetry, attitude. A reference gives the LANGUAGE, never the character
+  (no copied helm, beard, staff or palette): the design is original.
+- A mini like that fails `overhead` / `corridor` by design (OCASO 0.66 / 0.70; OSSINHO 0.72). That is a choice, not a
+  defect: write in the brief what it NEVER does (raise the arm beside the hood, an overhead strike) and give
+  it a gesture that fits (planted staff, low claw in front, diagonal slash).
+- With no visible legs the cloak is the base: it does not stagger, it TOPPLES (death = inverted pendulum over the edge of the hem).
+- A summoned unit = another character (its own brief, model, rig and clips), smaller and simpler, with `spawn` in
+  place of `hit` if the budget is five clips.
+- **A training dummy / prop that takes hits** (TOCO) is not a character: a single image on Tripo (GPT Image 2.5, 2 options
+  with an approved character's prop as style reference) → single-image "Generate 3D". What the design needs: a painted
+  SIDE that says "hit here" (target disc) and that will face the camera; thick stacked masses (tied sacks, not loose
+  straw — the option with a straw skirt was discarded); a WIDE cross-shaped foot (it is the edge it topples over,
+  0.22–0.27 m on a 1.15 m dummy) with the post rising from the center; a head separated by a narrow neck (it becomes
+  the 2nd pivot of the springs).
+  A left/right marker as well (a patch on one side of the sack).
 
-## 5. O que o segundo personagem (GRANIZO) ensinou sobre o brief
+## 5. What the second character (GRANIZO) taught about the brief
 
-- Escreva no brief só o que a silhueta precisa. O bloco de gelo nas costas saiu: ficava no caminho do martelo atrás da
-  cabeça (a regra "nada rígido na linha dos ombros" vale também para o que o próprio brief inventa).
-- Pele muito clara estoura para branco nas luzes do palco: `stage.py --arg exposure=-0.9` (ou
-  `scene.view_settings.exposure`) antes de julgar qualquer imagem.
-- O Tripo solda o rabo de cavalo na nuca e funde os dedos: aceite (corrente macia por cor, mão em placa única) em vez de
-  gastar créditos tentando separar.
-- Gere e MEÇA antes de gostar: `model_gates.py` (overhead / corridor / wrap / **cuff**) + `limb_radii.py` + fatias (seção 2 da skill `character-rig`) dizem em
-  minutos se braço, corredor, bracelete e pegada passam. Refazer o concept custa 55 créditos; descobrir no clipe custa o dia.
+- Write in the brief only what the silhouette needs. The ice block on the back was cut: it was in the hammer's path behind
+  the head (the rule "nothing rigid on the shoulder line" also applies to whatever the brief itself invents).
+- Very light skin blows out to white under the stage lights: `stage.py --arg exposure=-0.9` (or
+  `scene.view_settings.exposure`) before judging any image.
+- Tripo welds the ponytail to the nape and fuses the fingers: accept it (soft chain by color, single plate hand) instead
+  of spending credits trying to separate them.
+- Generate and MEASURE before you fall for it: `model_gates.py` (overhead / corridor / wrap / **cuff**) + `limb_radii.py` + slices (section 2 of the skill `character-rig`) tell you in
+  minutes whether arm, corridor, bracer and grip pass. Redoing the concept costs 55 credits; finding out in the clip costs the day.
 
-## 5b. Uma ideia, amplificada em OBJETOS (GRANIZO v3, 2026-11-14 — "melhorou bastante mas pode melhorar mais ainda seguindo os princípios de originalidade")
+## 5b. One idea, amplified into OBJECTS (GRANIZO v3, 2026-11-14 — "it got a lot better but it can get even better by following the principles of originality")
 
-O v2 lia como "ogro com machado". O v3 começa de UMA frase — *ele É a geleira* (a geleira cresceu sobre ele) — e cada
-asset nasce dela:
+v2 read as "ogre with an axe". v3 starts from ONE sentence — *he IS the glacier* (the glacier grew over him) — and every
+asset is born from it:
 
-- A ideia vira **assimetria de objetos separados**, cada um gerado SOZINHO no Tripo (2 opções de cada): o lado ESQUERDO
-  glaciado (punho = bloco de gelo de 0,61 m na mão, crosta de gelo na metade esquerda da corcunda), o lado DIREITO ainda
-  ogro (picareta "Quebra-Geleira" de uma mão). 276 créditos no total (conceitos 32, vistas 24, corpo multivista + 3
-  props 220). Um prop por traço lê a 64 px; o mesmo traço pintado no corpo não lê.
-- Dois traços amplificados e só dois: o punho de geleira (assimetria) e a RACHADURA (todo golpe abre o chão). Cada clipe
-  conta uma história com um deles (idle: o gelo sobe pelo braço e ele sacode; morte: a geleira fecha sobre ele).
-- **Corcunda que sobe atrás do crânio** prende a cabeça: o osso da cabeça do Rigify é isolado e a corcunda está logo
-  atrás — inclinar a cabeça para trás passa de −10° e entra (−20° = 26 mm). Se o desenho tem corcunda até a coroa,
-  escreva no brief: olha PARA CIMA com os olhos e o tronco, nunca jogando a cabeça.
-- Braço curto para o tronco (meia largura dos ombros ÷ braço 0,97, regra ≤ 0,6) e corcunda = `overhead` 0,70,
-  `corridor` 0,90, `cuff` 0,93 por desenho: o preparo vai por cima do ombro DIREITO, o punho trabalha do lado dele.
+- The idea becomes **asymmetry of separate objects**, each one generated ON ITS OWN on Tripo (2 options of each): the LEFT
+  side glaciated (fist = a 0.61 m ice block on the hand, an ice crust on the left half of the hump), the RIGHT side still
+  ogre (the one-handed "Quebra-Geleira" / Glacier-Breaker pick). 276 credits in total (concepts 32, views 24, multiview body + 3
+  props 220). One prop per trait reads at 64 px; the same trait painted on the body does not.
+- Two amplified traits and only two: the glacier fist (asymmetry) and the CRACK (every strike splits the ground). Each clip
+  tells a story with one of them (idle: the ice creeps up the arm and he shakes it off; death: the glacier closes over him).
+- **A hump that rises behind the skull** traps the head: the Rigify head bone is isolated and the hump sits right
+  behind it — tilting the head back past −10° makes it go in (−20° = 26 mm). If the design has a hump up to the crown,
+  write in the brief: he looks UP with the eyes and the torso, never by throwing the head back.
+- Arm short for the torso (half shoulder width ÷ arm 0.97, rule ≤ 0.6) and hump = `overhead` 0.70,
+  `corridor` 0.90, `cuff` 0.93 by design: the wind-up goes over the RIGHT shoulder, the fist works on its own side.

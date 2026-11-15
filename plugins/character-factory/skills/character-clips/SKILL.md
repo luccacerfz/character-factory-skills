@@ -1,619 +1,695 @@
 ---
 name: character-clips
-description: Autorar os clipes de um personagem da Character Factory — pose-base, ataque, idle, andar, tomar dano e morte, e os clipes especiais (magia à distância com projétil, invocação, unidade que sai do chão / spawn, cajado plantado) — com arma de duas mãos, de uma mão + escudo ou SEM arma (garras, punhos — rota desarmada do freehands), molas de follow-through, efeitos (aura, raio, orbe), contato malha×malha e chão medidos e os 12 princípios da Disney conferidos no tamanho de jogo (64 px). Use quando o usuário pedir uma animação ("faz o idle", "ataque", "andar", "dano", "morte", "magia", "invocação", "todas as animações"), reclamar de uma ("o braço some", "está sem peso", "o pé patina", "a arma atravessa") ou depois de mudar o rig. Inclui a referência em vídeo Seedance do próprio personagem com membros coloridos. Personagens CONTRACENANDO (invocador + invocados, alvo de treino, rodada) são da skill character-show. Inclui os princípios de jogo no clipe: poses que leem a 64 px, golpe curto com contato claro e hit-stop, variações de andar para bando e o clipe de vitória/close.
+description: Author the clips of a Character Factory character — base pose, attack, idle, walk, taking a hit and death, plus the special clips (ranged spell with a projectile, summon, a unit that rises out of the ground / spawn, planted staff) — with a two-handed weapon, a one-handed weapon + shield or NO weapon (claws, fists — the unarmed freehands route), follow-through springs, effects (aura, bolt, orb), measured mesh×mesh and floor contact, and the 12 Disney principles checked at game size (64 px). Use when the user asks for an animation ("make the idle", "attack", "walk", "hit", "death", "spell", "summon", "all the animations"), complains about one ("the arm disappears", "it has no weight", "the foot slides", "the weapon goes through"), or after changing the rig. Includes the Seedance video reference of the character itself with colored limbs. Characters ACTING TOGETHER (summoner + summoned units, training target, round) belong to the character-show skill. Includes the game principles in the clip: poses that read at 64 px, a short strike with clear contact and hit-stop, walk variations for packs, and the victory/close-up clip.
 ---
 
-# Clipes
+# Clips
 
-Tudo que é autoral de um clipe mora em `characters/<id>/anim/<clip>.clip.json`; `./clip.sh <id> <NAME> <clip>` constrói
-(~7–20 s) e escreve o relatório de cada estágio em `anim/<clip>.build.log`. O contrato completo das chaves está em
-`factory/README.md` ("Clipes" e "Além do ataque"); as receitas do BRASA e do GRANIZO são os exemplos. Regras de
-operação: skill `character-factory`.
+Everything authored in a clip lives in `characters/<id>/anim/<clip>.clip.json`; `./clip.sh <id> <NAME> <clip>` builds it
+(~7–20 s) and writes each stage's report to `anim/<clip>.build.log`. The full key contract is in
+`factory/README.md` (sections "Clipes" and "Além do ataque"); BRASA's and GRANIZO's recipes are the examples. Operating
+rules: skill `character-factory`.
 
-Ordem dos estágios (não mude): retarget (se houver take) → polish → floor | bodyfloor (+plant, +limbfloor) → weapon OU
-onehand → freehands (se soltou o prop, duas mãos) → hubpin → secondary → keepclear → **stance** → fx.
+Stage order (do not change it): retarget (if there is a take) → polish → floor | bodyfloor (+plant, +limbfloor) → weapon OR
+onehand → freehands (if the prop was released, two hands) → hubpin → secondary → keepclear → **stance** → fx.
 
-## 0. Personagem novo: comece PORTANDO as receitas de um aprovado
+## 0. New character: start by PORTING the recipes of an approved one
 
 ```
-python3 cf/port_clip.py <src_id> <SRC> <dst_id> <DST> [clip ...] [--force]   # ângulos copiados; metros escalados
-bl.py run blender/limb_radii.py --arg name=<DST> --arg landmarks=<json>      # raios REAIS do braço -> landmarks "limbs"
-./build.sh <id> <NAME> attack            # clip.sh + relatório curto + emenda/base  (depois idle walk hit death)
-./look.sh <id> <NAME> <clip> a '[[62,8],[0,6],[90,6]]' 3 2.1 '[0.1,-0.3,0.95]'   # folhas de contato de câmeras fixas
-./contacts.sh <id> <NAME> <clip>...      # contact_probe em cada clipe, uma linha por par
+python3 cf/port_clip.py <src_id> <SRC> <dst_id> <DST> [clip ...] [--force]   # angles copied; meters scaled
+bl.py run blender/limb_radii.py --arg name=<DST> --arg landmarks=<json>      # REAL arm radii -> landmarks "limbs"
+./build.sh <id> <NAME> attack            # clip.sh + short report + seam/base  (then idle walk hit death)
+./look.sh <id> <NAME> <clip> a '[[62,8],[0,6],[90,6]]' 3 2.1 '[0.1,-0.3,0.95]'   # contact sheets from fixed cameras
+./contacts.sh <id> <NAME> <clip>...      # contact_probe on each clip, one line per pair
 ```
 
-O porte escala cada número pelo que ele é: ângulos iguais; metros no espaço do peito × razão dos braços; metros no chão
-× razão das pernas; raios do solver = os MEDIDOS no corpo novo. No GRANIZO os cinco clipes construíram na primeira
-tentativa; o que o porte NÃO sabe e teve de ser corrigido à mão:
-- **largura dos ombros**: escalar pela razão dos braços deixa a mão do pomo por dentro do ombro num corpo mais largo
-  (ombros ×1,6, braços ×1,44) → +0,07 m em "esq" nas chaves de porte baixo, +0,04 no impacto;
-- **raios**: a receita trazia antebraço 0,11 m; o bracelete mede 0,164 → o solver achava livre um pomo 35 mm dentro;
-- **onde a torção aparece**: com bracelete rígido no osso sem torção, a torção do antebraço não torce nada e o que
-  aparece é o DESVIO do punho (cabo deitado no bracelete) → `forearm_twist_free_deg 110`, `wrist_ulnar_max_deg 45`,
-  `twist_side` só no braço que precisa; `weapon.grip` com a mão do pomo na PONTA do cabo (sobra ≤ 2–3 cm);
-- **referência em vídeo**: é do próprio personagem — o porte apaga `reference`; filme outra (seção 7);
-- **classe de peso**: o porte copia os TEMPOS. Um ogro de 390 kg com os tempos de um anão levou 7,46 dos críticos
-  ("a dwarf's timing on an ogre's mass"). Antes da primeira revisão, re-tempore para a massa: andar com período mais
-  longo (24 → 30 quadros = 120 passos/min; chaves em f' = 1 + (f−1)·k), `bob` e balanço da arma menores (quadril
-  ≤ 4,5 cm, cabeça da arma ≤ 15 cm), mergulhos em 8–10 quadros, recuo do dano e chute das pernas na morte pela metade;
-- **alcance das pernas**: metros de tronco × razão das pernas pode pedir um agachamento que a perna curta não tem
-  (−14,4 cm em pernas de 43 cm): o `polish.py` devolve o quadril (`leg_reach.hips_raised_max_cm`) e o corpo bate
-  nesse limite como numa parede. Leia `hips` em `motion_table.py` e chaveie até o limite, não além.
+The port scales each number by what it is: angles stay equal; chest-space meters × the arm ratio; floor meters
+× the leg ratio; solver radii = the ones MEASURED on the new body. On GRANIZO all five clips built on the first
+try; what the port does NOT know and had to be fixed by hand:
+- **shoulder width**: scaling by the arm ratio leaves the pommel hand inside the shoulder on a wider body
+  (shoulders ×1.6, arms ×1.44) → +0.07 m on "esq" (left) in the low-carry keys, +0.04 at impact;
+- **radii**: the recipe carried a 0.11 m forearm; the bracer measures 0.164 → the solver saw a pommel 35 mm inside as free;
+- **where the twist shows**: with a rigid bracer on the non-twist bone, the forearm twist twists nothing and what
+  shows is the wrist DEVIATION (handle lying on the bracer) → `forearm_twist_free_deg 110`, `wrist_ulnar_max_deg 45`,
+  `twist_side` only on the arm that needs it; `weapon.grip` with the pommel hand at the END of the handle (≤ 2–3 cm spare);
+- **video reference**: it is of the character itself — the port deletes `reference`; film a new one (section 7);
+- **weight class**: the port copies the TIMINGS. A 390 kg ogre with a dwarf's timings got 7.46 from the critics
+  ("a dwarf's timing on an ogre's mass"). Before the first review, re-time for the mass: a walk with a longer period
+  (24 → 30 frames = 120 steps/min; keys at f' = 1 + (f−1)·k), smaller `bob` and weapon sway (hips
+  ≤ 4.5 cm, weapon head ≤ 15 cm), dips over 8–10 frames, the hit's recoil and the death's leg kick halved;
+- **leg reach**: torso meters × the leg ratio can ask for a crouch the short leg does not have
+  (−14.4 cm on 43 cm legs): `polish.py` gives the hips back (`leg_reach.hips_raised_max_cm`) and the body hits
+  that limit like a wall. Read `hips` in `motion_table.py` and key up to the limit, not beyond it.
 
-`weapon.debug_arm: ["L", 17]` imprime no log o custo de cada giro de cotovelo daquele braço naquele quadro (desvio,
-torção, flexão, folga do cabo): leia isso antes de mexer em pesos do solver.
+`weapon.debug_arm: ["L", 17]` prints in the log the cost of each elbow swivel of that arm on that frame (deviation,
+twist, flexion, handle clearance): read it before touching the solver weights.
 
-## 1. A pose-base decide os cinco clipes
+## 1. The base pose decides the five clips
 
-- Pose-base = quadro 1 do ataque (porte da arma a duas mãos). Idle, andar, dano e morte usam
-  `recipe.pose_from: "<NAME>_attack"`; sem take de mocap, `source: "hold"` + `layers` / `gait`.
-- Antes de animar, escolha a pose-base olhando três números do `weapon.py`: torção dos antebraços (meta < 90° do bind),
-  dobra dos punhos (< 60°) e `contact_probe` do quadro 1. Um defeito aqui é herdado por todo clipe.
-- Parâmetro da pose-base (`weapon.grip`, `grip.*`, `phi_ready` / `psi_ready`) não se mexe por causa de um quadro:
-  mudou, reconstrua os cinco (ataque primeiro) e sonde os cinco.
-- Todo clipe é autorado **quadrado** e girado no último estágio (`stance_yaw_deg`: ataque / idle / dano / morte +30°,
-  andar 0°). Os solvers não são invariantes a rotação.
+- Base pose = frame 1 of the attack (two-handed weapon carry). Idle, walk, hit and death use
+  `recipe.pose_from: "<NAME>_attack"`; without a mocap take, `source: "hold"` + `layers` / `gait`.
+- Before animating, choose the base pose by looking at three numbers from `weapon.py`: forearm twist (target < 90° from
+  bind), wrist bend (< 60°) and the `contact_probe` of frame 1. A defect here is inherited by every clip.
+- A base-pose parameter (`weapon.grip`, `grip.*`, `phi_ready` / `psi_ready`) is not changed because of one frame:
+  if it changed, rebuild all five (attack first) and probe all five.
+- Every clip is authored **square** and rotated in the last stage (`stance_yaw_deg`: attack / idle / hit / death +30°,
+  walk 0°). The solvers are not rotation-invariant.
 
-## 2. Braços num cabo
+## 2. Arms on a handle
 
-`weapon.py` resolve cada braço com duas variáveis livres (giro do cotovelo × rolagem do punho no cabo).
-- `weapon.keys` = ângulos do prop `[quadro, phi, psi, sep, ease]`; `weapon.hands` = centro da pegada no espaço do
-  peito `[quadro, esq, frente, cima, peso]` (peso 2 = chave travada).
-- Se `twist_jumps` / `seam_crossings` não vierem vazios ou o punho passar de ~60°, o erro é da trajetória do prop ou das
-  mãos, não do solver: `./wtable.sh <id> <NAME> <clip> [f0 f1]` (tabela por quadro; ele RE-EXECUTA o weapon.py →
-  reconstrua com `clip.sh` depois) e `cf/armlab.py` para testar regra nova offline.
-- Onde a pegada cabe: `blender/reach_map.py` (um punho, com o raio REAL do antebraço) e `blender/grip_fit.py` (centro da
-  pegada em que os dois braços ficam fora do corpo → chaves prontas). Mão do pomo à frente do próprio ombro, nunca no
-  eixo do corpo; com as mãos altas os cotovelos vão para frente/cima e a cabeça é zona proibida.
-- Prop com inércia (`drag`): o cabo real atrasa 25–40° do ângulo chaveado → chaveie as mãos contra o ângulo real.
-- `twist_side` fixa o ramo da torção; o outro ramo também se mede antes de escolher. Hipótese de crítico se testa e
-  se mede: soltar o ramo do braço direito do GRANIZO ("a torção estaciona em 155°") deu 178°, desvio de punho ±90° e
-  um cruzamento de costura → revertido. Num bracelete rígido essa torção nem aparece; o desvio do punho aparece.
-- `handle_weight` / `handle_cost_cap` (padrão 4 / 8): subir para 20 / 45 no ataque levou cabo × antebraço direito de
-  23 mm para 12,5 mm sem saltos; confira `twist_jumps`, a dobra do punho e o `contact_probe` depois.
-- O antebraço não pode deitar no cabo: regra do pomo (mão de baixo) + regra do cabo (as duas mãos, `handle_weight`),
-  ambas com custo que satura. Elas escolhem o cotovelo; quem resolve de verdade é a posição da pegada e o desenho do
-  bracelete (skill `character-design`). Resto conhecido no GRANIZO: pomo × bracelete 34 mm em 7 quadros do ataque.
+`weapon.py` solves each arm with two free variables (elbow swivel × wrist roll on the handle).
+- `weapon.keys` = prop angles `[quadro, phi, psi, sep, ease]` (quadro = frame); `weapon.hands` = grip center in chest
+  space `[quadro, esq, frente, cima, peso]` (frame, left, forward, up, weight; weight 2 = locked key).
+- If `twist_jumps` / `seam_crossings` do not come back empty or the wrist goes past ~60°, the error is in the prop's or the
+  hands' trajectory, not in the solver: `./wtable.sh <id> <NAME> <clip> [f0 f1]` (per-frame table; it RE-RUNS weapon.py →
+  rebuild with `clip.sh` afterwards) and `cf/armlab.py` to test a new rule offline.
+- Where the grip fits: `blender/reach_map.py` (one wrist, with the REAL forearm radius) and `blender/grip_fit.py` (the grip
+  center at which both arms stay outside the body → ready-made keys). Pommel hand in front of its own shoulder, never on the
+  body's axis; with the hands high the elbows go forward/up and the head is a forbidden zone.
+- Prop with inertia (`drag`): the real handle lags 25–40° behind the keyed angle → key the hands against the real angle.
+- `twist_side` fixes the twist branch; measure the other branch too before choosing. A critic's hypothesis is tested and
+  measured: freeing the branch of GRANIZO's right arm ("the twist parks at 155°") gave 178°, wrist deviation ±90° and
+  a seam crossing → reverted. On a rigid bracer that twist does not even show; the wrist deviation does.
+- `handle_weight` / `handle_cost_cap` (default 4 / 8): raising them to 20 / 45 in the attack took handle × right forearm
+  from 23 mm to 12.5 mm with no jumps; check `twist_jumps`, the wrist bend and the `contact_probe` afterwards.
+- The forearm must not lie along the handle: pommel rule (lower hand) + handle rule (both hands, `handle_weight`),
+  both with a cost that saturates. They choose the elbow; what really solves it is the grip position and the design of the
+  bracer (skill `character-design`). Known remainder on GRANIZO: pommel × bracer 34 mm in 7 frames of the attack.
 
-## 2b. Arma de UMA mão, escudo segurado, efeito (ALVOR é o exemplo: `characters/alvor/anim/*.clip.json`)
+## 2b. ONE-handed weapon, held shield, effect (ALVOR is the example: `characters/alvor/anim/*.clip.json`)
 
-Quando `rig/landmarks.json` tem `onehand`, o `clip.sh` roda `onehand.py` no lugar do `weapon.py`. Leia o cabeçalho dele.
-- Você chaveia o que lê a 64 px: `weapon.wrist` `[quadro, esq, frente, cima]` (pulso no espaço do PEITO) e `weapon.aim`
-  `[quadro, phi, psi]` (para onde a lâmina aponta). O solver é dono do cotovelo, do giro do punho e dos limites.
-  `"ready"` = a pose de porte do personagem (`landmarks.onehand`).
-- **A chave não é o contato.** `drag` é uma mola na direção da lâmina (0,35 ≈ 1,3 quadro de atraso). Meça a lâmina
-  (rumo/elevação do osso da arma) no quadro do evento `hit` e adiante as chaves — no ALVOR ela apontava −81° do alvo
-  no quadro do evento antes do ajuste.
-- **Escudo**: segurado pela alça na mão (`props[].seat`), apontado por `off.face` `[quadro, rumo, elevação, giro]` —
-  a FACE do escudo; a mão toma a orientação que isso pede. Na guarda ele fica na FRENTE do corpo (punho na linha do
-  centro), nunca ao lado do ombro; o braço do escudo fica à frente no preparo e abre como contrapeso no corte.
-- **Escudo em repouso (morte, queda)**: o eixo do punho fica a ~40° da normal do escudo (a alça é inclinada). Um
-  escudo deitado de face para cima AO LADO de um antebraço deitado obriga o punho a apontar para o céu — pulso a 114°
-  por 23 quadros no ALVOR. Pouse o escudo SOBRE o corpo (peito), por último, e gire-o no próprio plano (`roll`) até o
-  pulso descansar (32°). Leia `wrist_bend` da mão do escudo no último quadro, não só no golpe.
-- **Mira que o pulso não dá não é alcançada — e ninguém avisa.** Os limites (`wrist_flex_max` 60, `wrist_dev_max`
-  38) cortam a mira em silêncio: um follow-through com psi +33 parou 12 cm antes. Confira `aim_off_deg` do build e
-  a posição da ponta; termine o golpe numa mira que o braço alcança.
-- **Espaçamento se mede na PONTA**: velocidade da ponta quadro a quadro (`motion_table` → `speed.sword_head`). O corte
-  do ALVOR tinha 8,9 → 7,7 → 16,7 m/s (um tranco e um salto) que nenhuma folha de câmera mostrava; redistribuindo
-  as chaves de punho/mira/tronco ficou 5,4 8,7 12,1 13,7 9,3 6,5 (acelera até o contato, desacelera depois).
-- **Arma solta** (`weapon.release`): o `onehand.py` deita o prop pelo casco inferior da PRÓPRIA malha (apoia nos dois
-  pontos mais baixos em volta do centro de massa — na espada, guarda + ponta) e levanta um prop em voo que tocaria o
-  piso. Leia `prop_lies` no log do build. O evento de som (`sword_ground`) vai no quadro do primeiro toque.
-- **Prop solto herda DUAS velocidades**: a linear (abaixo) e a ANGULAR — `release.ballistic.turn: 1.0` = gira a taxa
-  constante durante o voo. Sem isso a rotação entra em ease-in até a pose deitada e a arma "paira em pé ao lado da mão
-  e depois tomba" (ALVOR rodada 3: 4,5 → 13,2°/quadro; virou o defeito mais visível da morte). Confira o passo angular
-  por quadro, não só a posição; aço que chega a ~4 m/s quica (`bounce` ≈ 0,12).
-- **Queda obedece a g**: com apoio no chão o centro de massa não acelera para baixo mais que 1,09 cm/quadro² (30 fps), e
-  não desce a velocidade constante (lê como agachar). Cair = o centro de massa SAI do apoio (margem cruza zero) antes de
-  o quadril descer. Em loop, camadas com a mesma fase param juntas em algum quadro: defase-as (peito 6–8 quadros depois
-  do tronco) e confira que quadril, cabeça e ponta nunca ficam os três abaixo de 0,03 m/s.
-- **Soltura balística** (`release.ballistic`): o prop sai com a velocidade da MÃO e cai por gravidade; onde e quando
-  pousa é calculado (`release_land_left_m / _fwd_m`, `release_flight_frames` no log). Para mudar o pouso, mude o gesto:
-  `Δpouso = Δv × quadros de voo` (1 cm/quadro ≈ 19 cm) — mova a chave do pulso do quadro anterior ao último segurado,
-  convertendo de mundo para o espaço do peito com os eixos do peito daquele quadro. Guarda de lado = o braço da arma é
-  o de TRÁS: no recuo ele viaja para trás e a arma pousa atrás da cabeça se ninguém chavear o contrário. Chaves até 3
-  quadros DEPOIS da soltura também mexem no voo: meça de novo.
-- **A arma sai pela palma**: sonde a posição do cabo no espaço do osso da mão nos 5 quadros depois da soltura; se ela
-  anda contra a palma (ou o tombo leva o pomo para o antebraço), `contacts.sh` acusa arma × antebraço/mão. Conserto:
-  a mão recua pela normal da palma e o `yaw` do pouso inverte o tombo (o pomo sai para onde a palma olha).
-- **Prop segurado que é solto** (`off.release`, exige `own_bone` no rig): `{frame, blend, wrist, hand, curl}`. Dali em
-  diante `off.wrist` / `off.face` são o caminho do PROP; a mão segue `release.wrist` e deita com `hand: [0, 0]`
-  (`hand` é [torção, flexão] — torção alta deixa a mão de quilha: `free_hand_wrist_lift_cm` alto no repouso).
-  **Repouso do prop sobre o corpo**: não ajuste no olho. `blender/settle_dump.py` (corpo + prop em triângulos no quadro
-  final) → `cf/settle_solve.py <npz> '<off.face final>' '<off.wrist final>'` devolve a pose de menor centro de massa em
-  contato (apoios, margem do centro de massa) já como chaves; aplique a mesma diferença às chaves do pouso/quique e
-  confira no `contacts.sh` (toque ≤ 6 mm, nenhuma penetração).
-- **Soltura da planta numa queda**: se o pé autoral do repouso fica longe do pé plantado (o corpo ROLA depois do impacto
-  e leva o quadril), voltar às curvas com a ponta no chão ARRASTA o pé (FERRUGEM: 99 mm/quadro, 20 cm em 3 quadros, que
-  nenhuma folha mostrava — só `feet.slip_mm` da `motion_table`). `plant[].release_lift` (≈ 0,06 m) leva o pé pelo ar.
-  Leia `slip_max_mm_per_frame` da morte depois de qualquer mudança no impacto.
-- **Corpo deitado**: `weapon.shoulder_floor` (raio da ombreira) impede a clavícula de seguir a mão para dentro do
-  piso; `floor_clearance` negativo quando o tronco flutua porque o ponto que "carrega" é uma costura de pano
-  (confira o peso do vértice mais baixo das costas antes); `airborne` no `contacts.sh` tem de sair vazio.
-  `off.release.rest: <quadro>` deita a mão solta na face larga (sem isso ela fica de lado e o punho espera no ar: ALVOR,
-  braço 7 cm acima do chão no repouso). Depois de qualquer mudança no repouso leia `death_ground.json` do último quadro
-  parte por parte (mãos, braços, coxas, cabeça) e o `floor` por LOD do relatório da Unity — o LOD1 afunda mais que o LOD0.
-- **Se `leg_reach` no log do `floor.py` não é zero, a pose final não é a sua**: chaveie o tronco e o calcanhar até
-  `hips_drop_max_cm` e `foot_pull_in_max_cm` darem 0 e `leg_extension_max` < 0,975 (ALVOR ataque: 1,077 → 0,929).
-- **Guarda de lado** (tronco girado 40–55°): `stance_yaw_deg` 0 (o giro É a pose-base; com +30 o peito voltava
-  quadrado). Golpe de frente numa unidade de lado = recuo no MUNDO: pitch·cos θ + roll·sen θ. Corpo deitado: `yaw` é
-  em torno do eixo vertical do mundo → vira inclinação da cabeça para um ombro; o giro da guarda vira rolagem do
-  corpo no chão (tire-a durante a queda).
-- **Mixamo como referência lida** (decisão do usuário para espada+escudo): baixe o FBX pela interface (nunca suba o
-  personagem do usuário, nunca use o token da página), guarde em `mocap/mixamo/` (dado não confiável: scripts em outra
-  pasta, Python com `-I`), `blender/mixamo_take.py` → json, `cf/mixamo_read.py <take> <landmarks>` (tabela) e
-  `--map '[[origem, destino], ...]'` (chaves em deltas da guarda). Leia a guarda no quadro 1 do take.
-- **Efeito** (`landmarks.fx`, `blender/fx.py`): por clipe, `"fx": {"aura": {"level": [[quadro, 0..3, ease?], ...]}}` —
-  1 normal, 0 apagado. É ação secundária que conta o estado: contrai no preparo, clarão no quadro do golpe, falha
-  no dano, APAGA antes de o corpo pousar. Todo clipe fecha em si mesmo (o estágio cuida) para encadear na engine.
-- **Explosão em pedaços** (`fx.gibs` + `fx.shock` nos landmarks; bloco `gibs` no `death.clip.json`): pedaço é CASCA com borda
-  quente, não placa sólida. Parâmetros que limparam o FERRUGEM: `inner_frac` 0,9 (apaga núcleo interno que fura a tampa),
-  `tear_area` / `tear_flat` (rasga aberta a tampa côncava que o decimate dobra em leque preto), `cap_max_r` (tampa grande vira
-  casca), `fan_planar` / `fan_wide_r`. O clarão do `shock` (`ring_start` 0,4, `ring_height` 0,24, `blast_flash`) tem de COBRIR
-  o quadro da troca corpo → pedaços. As sondas param em `cf_body_gone − 1`. Antes de exportar: `blender/lit_gain.py`
-  (skill `character-engine`) para a fumaça ler igual na engine.
-- **Poeira / vapor / faísca** (FERRUGEM r5): `kind: "puff"` (`mode` ground = poeira jogada pelo chão; rise = jato de vapor
-  que sobe) e `shock` com `arcs: 0` (faíscas + clarão). Clipe: `"bursts": [[quadro, ponto, força, modo?], ...]` no quadro do
-  CONTATO (pisão, garra no alvo, golpe recebido). Alpha é POR CARTA (três cartas cruzadas: 0,24–0,34; 0,6 deu "diamantes"
-  brancos); cor média (a luz de palco estoura 0,75). Todo efeito novo nos landmarks exige `./fxkey.sh` nos cinco clipes.
-- **Golpe AAA autoral**: o caminho da garra é uma curva (pontos de passagem), cada passo maior que o anterior até o contato;
-  hit-stop = chave de parada em TODAS as camadas do corpo e na janela da garra no mundo nos 2 quadros do contato;
-  corrente de força quadril → caldeira (+1 quadro) → garra. Meça: cantos (ângulo entre passos) e passos por quadro.
-- `python3 cf/clipfmt.py <clip.json>` mantém o arquivo legível (uma trilha por linha) depois de editar por script.
+When `rig/landmarks.json` has `onehand`, `clip.sh` runs `onehand.py` instead of `weapon.py`. Read its header.
+- You key what reads at 64 px: `weapon.wrist` `[quadro, esq, frente, cima]` (wrist in CHEST space) and `weapon.aim`
+  `[quadro, phi, psi]` (where the blade points). The solver owns the elbow, the wrist roll and the limits.
+  `"ready"` = the character's carry pose (`landmarks.onehand`).
+- **The key is not the contact.** `drag` is a spring along the blade direction (0.35 ≈ 1.3 frames of lag). Measure the
+  blade (heading/elevation of the weapon bone) on the `hit` event frame and move the keys earlier — on ALVOR it pointed −81°
+  away from the target on the event frame before the fix.
+- **Shield**: held by the strap in the hand (`props[].seat`), aimed by `off.face` `[quadro, rumo, elevação, giro]`
+  (frame, heading, elevation, roll) — the shield's FACE; the hand takes the orientation that this asks for. In guard it
+  sits in FRONT of the body (wrist on the center line), never beside the shoulder; the shield arm is forward in the
+  wind-up and opens as a counterweight in the cut.
+- **Shield at rest (death, fall)**: the wrist axis sits ~40° from the shield's normal (the strap is slanted). A
+  shield lying face up NEXT TO a lying forearm forces the wrist to point at the sky — wrist at 114°
+  for 23 frames on ALVOR. Lay the shield ON the body (chest), last, and turn it in its own plane (`roll`) until the
+  wrist rests (32°). Read the shield hand's `wrist_bend` on the last frame, not only in the strike.
+- **An aim the wrist cannot give is not reached — and nobody warns you.** The limits (`wrist_flex_max` 60, `wrist_dev_max`
+  38) clip the aim silently: a follow-through with psi +33 stopped 12 cm short. Check the build's `aim_off_deg` and
+  the tip position; end the strike on an aim the arm can reach.
+- **Spacing is measured at the TIP**: tip speed frame by frame (`motion_table` → `speed.sword_head`). ALVOR's cut
+  had 8.9 → 7.7 → 16.7 m/s (a jerk and a jump) that no camera sheet showed; after redistributing
+  the wrist/aim/torso keys it became 5.4 8.7 12.1 13.7 9.3 6.5 (accelerates up to the contact, decelerates after).
+- **Released weapon** (`weapon.release`): `onehand.py` lays the prop down on the lower hull of its OWN mesh (it rests on
+  the two lowest points around the center of mass — on the sword, guard + tip) and lifts an in-flight prop that would touch
+  the floor. Read `prop_lies` in the build log. The sound event (`sword_ground`) goes on the frame of the first touch.
+- **A released prop inherits TWO velocities**: the linear one (below) and the ANGULAR one — `release.ballistic.turn: 1.0`
+  = it spins at a constant rate during the flight. Without it the rotation eases in toward the lying pose and the weapon
+  "hovers upright next to the hand and then topples" (ALVOR round 3: 4.5 → 13.2°/frame; it became the most visible defect
+  of the death). Check the angular step per frame, not only the position; steel arriving at ~4 m/s bounces (`bounce` ≈ 0.12).
+- **A fall obeys g**: with support on the floor the center of mass does not accelerate downward faster than 1.09
+  cm/frame² (30 fps), and does not descend at constant speed (that reads as crouching). Falling = the center of mass
+  LEAVES the support (the margin crosses zero) before the hips drop. In a loop, layers with the same phase stop together
+  on some frame: offset them (chest 6–8 frames after the torso) and check that hips, head and tip are never all three
+  below 0.03 m/s.
+- **Ballistic release** (`release.ballistic`): the prop leaves with the HAND's velocity and falls under gravity; where and
+  when it lands is computed (`release_land_left_m / _fwd_m`, `release_flight_frames` in the log). To change the landing,
+  change the gesture: `Δpouso = Δv × quadros de voo` (landing shift = velocity change × flight frames; 1 cm/frame
+  ≈ 19 cm) — move the wrist key of the frame before the last held one, converting from world to chest space with that
+  frame's chest axes. Side guard = the weapon arm is the REAR one: in the recoil it travels backward and the weapon lands
+  behind the head unless someone keys the opposite. Keys up to 3 frames AFTER the release also change the flight:
+  measure again.
+- **The weapon leaves through the palm**: probe the handle position in the hand bone's space for the 5 frames after the
+  release; if it moves against the palm (or the tumble carries the pommel into the forearm), `contacts.sh` flags weapon ×
+  forearm/hand. Fix: the hand backs off along the palm normal and the landing `yaw` reverses the tumble (the pommel leaves
+  toward where the palm faces).
+- **A held prop that is released** (`off.release`, requires `own_bone` in the rig): `{frame, blend, wrist, hand, curl}`.
+  From then on `off.wrist` / `off.face` are the PROP's path; the hand follows `release.wrist` and lies down with
+  `hand: [0, 0]` (`hand` is [twist, flexion] — a high twist leaves the hand on edge: a high `free_hand_wrist_lift_cm` at
+  rest).
+  **Prop resting on the body**: do not adjust it by eye. `blender/settle_dump.py` (body + prop as triangles on the final
+  frame) → `cf/settle_solve.py <npz> '<off.face final>' '<off.wrist final>'` returns the lowest-center-of-mass pose in
+  contact (supports, center-of-mass margin) already as keys; apply the same difference to the landing/bounce keys and
+  check with `contacts.sh` (touch ≤ 6 mm, no penetration).
+- **Releasing the plant in a fall**: if the authored rest foot is far from the planted foot (the body ROLLS after the
+  impact and takes the hips with it), going back to the curves with the toe on the floor DRAGS the foot (FERRUGEM: 99
+  mm/frame, 20 cm in 3 frames, which no sheet showed — only the `motion_table`'s `feet.slip_mm`). `plant[].release_lift`
+  (≈ 0.06 m) carries the foot through the air. Read the death's `slip_max_mm_per_frame` after any change to the impact.
+- **Lying body**: `weapon.shoulder_floor` (pauldron radius) stops the clavicle from following the hand into the
+  floor; a negative `floor_clearance` when the torso floats because the point that "carries" it is a cloth seam
+  (check the weight of the lowest back vertex first); `airborne` in `contacts.sh` must come out empty.
+  `off.release.rest: <quadro>` (a frame) lays the free hand on its broad face (without it the hand stays on edge and the
+  wrist waits in the air: ALVOR, arm 7 cm above the floor at rest). After any change to the rest pose, read the last
+  frame's `death_ground.json` part by part (hands, arms, thighs, head) and the per-LOD `floor` in the Unity report — LOD1
+  sinks more than LOD0.
+- **A lying body that floats after the springs** (CENTELHA death r4): measured stage by stage, polish / bodyfloor /
+  limbfloor / onehand / hubpin left the thigh 0 mm from the floor and `secondary.py` lifted it to 41–51 mm. The seat
+  vertices share weight with the back tabard; with `floor_over_limit` the cloth is held above the floor and the seat
+  rises with it. A `floor_clearance` of 0.05–0.065 on the springs made it worse (it holds the tips 5–6.5 cm up). The
+  tool: `"floor_resettle": true` in the clip (`clip.sh`) settles the torso again AFTER the springs, with the arms and the
+  cloth carried along, and `bodyfloor.py keep/keep_from` keeps an already released prop in place in the world (without
+  it the staff went 39 mm into the floor along with the root).
+- **If `leg_reach` in the `floor.py` log is not zero, the final pose is not yours**: key the torso and the heel until
+  `hips_drop_max_cm` and `foot_pull_in_max_cm` give 0 and `leg_extension_max` < 0.975 (ALVOR attack: 1.077 → 0.929).
+- **Side guard** (torso turned 40–55°): `stance_yaw_deg` 0 (the turn IS the base pose; with +30 the chest came back
+  square). A frontal hit on a side-on unit = recoil in the WORLD: pitch·cos θ + roll·sin θ. Lying body: `yaw` is
+  around the world's vertical axis → it becomes a head tilt toward one shoulder; the guard's turn becomes a roll of the
+  body on the floor (remove it during the fall).
+- **Mixamo as a reference that is read** (the user's decision for sword+shield): download the FBX through the web
+  interface (never upload the user's character, never use the page's token), store it in `mocap/mixamo/` (untrusted data:
+  scripts in another folder, Python with `-I`), `blender/mixamo_take.py` → json, `cf/mixamo_read.py <take> <landmarks>`
+  (table) and `--map '[[origem, destino], ...]'` (source, target; keys as deltas from the guard). Read the guard on frame
+  1 of the take.
+- **Effect** (`landmarks.fx`, `blender/fx.py`): per clip, `"fx": {"aura": {"level": [[quadro, 0..3, ease?], ...]}}` —
+  1 normal, 0 off. It is secondary action that tells the state: it contracts in the wind-up, flashes on the strike frame,
+  flickers on the hit, goes OUT before the body lands. Every clip closes on itself (the stage handles it) so it chains in
+  the engine.
+- **Explosion into pieces** (`fx.gibs` + `fx.shock` in the landmarks; a `gibs` block in `death.clip.json`): a piece is a
+  SHELL with a hot rim, not a solid plate. Parameters that cleaned up FERRUGEM: `inner_frac` 0.9 (deletes the inner core
+  that pokes through the cap), `tear_area` / `tear_flat` (tears open the concave cap that decimate folds into a black fan),
+  `cap_max_r` (a big cap becomes a shell), `fan_planar` / `fan_wide_r`. The `shock` flash (`ring_start` 0.4, `ring_height`
+  0.24, `blast_flash`) must COVER the frame of the body → pieces swap. The probes stop at `cf_body_gone − 1`. Before
+  exporting: `blender/lit_gain.py` (skill `character-engine`) so the smoke reads the same in the engine.
+- **Dust / steam / spark** (FERRUGEM r5): `kind: "puff"` (`mode` ground = dust thrown along the floor; rise = a jet of
+  steam going up) and `shock` with `arcs: 0` (sparks + flash). Clip: `"bursts": [[quadro, ponto, força, modo?], ...]`
+  (frame, point, strength, mode) on the CONTACT frame (stomp, claw on the target, strike received). Alpha is PER CARD
+  (three crossed cards: 0.24–0.34; 0.6 gave white "diamonds"); a medium color (the stage light blows out 0.75). Every new
+  effect in the landmarks requires `./fxkey.sh` on all five clips.
+- **Authored AAA strike**: the claw path is a curve (waypoints), each step larger than the previous one until the contact;
+  hit-stop = a stop key on ALL the body layers and on the claw's world window during the 2 contact frames;
+  chain of force hips → boiler (+1 frame) → claw. Measure: corners (angle between steps) and steps per frame.
+- `python3 cf/clipfmt.py <clip.json>` keeps the file readable (one track per line) after editing it by script.
 
-## 2c. Prop plantado, unidade que SAI DO CHÃO, invocador (exemplos: `characters/ocaso`, `characters/ossinho`)
+## 2c. Planted prop, a unit that RISES OUT OF THE GROUND, summoner (examples: `characters/ocaso`, `characters/ossinho`)
 
-- **Clipe autoral de ataque** (sem take de ator) é `"kind": "oneshot"` + `recipe.returns_hub: true`. `"kind": "attack"`
-  é o caminho de mocap: o `polish.py` procura `<NAME>_attack_mocap`, falha, e os estágios seguintes do `clip.sh` rodam
-  sobre a ação que estava no rig e a CORROMPEM (o andar do OSSINHO teve de ser reconstruído). Build que falhou no
-  polish = reconstrua também o clipe que estava na tela.
-- **Cajado plantado**: `weapon.wrist_frame` / `aim_frame: "root"` (chaves no espaço da unidade, não do peito) e
-  `weapon.foot` (o pé do prop é quem manda; `blender/prop_foot.py` mede, a build reporta `foot_off_mm`). Cuidado:
-  com `aim_frame: "root"` a palavra `"ready"` é outra pose — numa unidade de prop carregado o quadro 1 saiu 59 mm da
-  pose-base.
-- **Unidade que nasce do chão = elevador** (`"sink": [[quadro, metros, ease], ...]` → `blender/sink.py`, depois do
-  stance). Todo estágio trabalha com o piso em z = 0; então o clipe é autorado com a unidade EM PÉ no próprio piso e o
-  `sink` baixa a raiz. Mão na borda do buraco = mão chaveada ALTA no espaço da unidade
-  (`weapon.off.wrist_frame: "root"`, altura = −sink + 2 cm, uma chave por quadro). Gere o `sink` e essas chaves
-  JUNTOS, de uma curva física só: velocidade de saída e `g` (9,81 / 900 m por quadro²) dão o ápice e o quadro do pouso
-  (OSSINHO: solta a 1,94 m/s, 7 cm acima do chão no ápice, pousa 10 quadros depois; `sink` > 0 = no ar).
-  `floor_probe.py` julga contra o piso DELE (`cf_sink` fica na ação). O clipe não começa na pose-base (quadro 1 =
-  enterrado) e termina nela.
-  - A ordem em que as coisas saem se MEDE: altura de cada ponta (mão, topo do crânio, ponta da lâmina) contra −sink,
-    quadro a quadro. Lâmina a 40° "boiava" deitada na superfície; 52° ainda enterrada e 80° dois quadros depois: fura
-    de ponta.
-  - Corpo sem alcance por cima da cabeça (`overhead` 0,72): role o tronco 20° para o ombro que sobe ficar alto e o
-    crânio sair do caminho — 12 cm de janela em que só a mão aparece.
-- **Morte de unidade leve**: arremessada, não tombada — `root pitch` que só acelera (6 → 14°/quadro), `floor_hop` no
-  voo, sem `plant`. No chão, tire TUDO o que a guarda tem de torto: o giro vira `roll` (seção 7, ALVOR), a inclinação
-  para a frente vira um abdominal (ombros 4 cm no ar), e a cabeça inclinada para trás segura o corpo inteiro na nuca
-  quando o crânio é mais grosso que as costelas (quadril 3,4 cm acima do chão): cabeça em linha com a coluna e raiz
-  2–3° antes de −90.
-- **Invocador**: `landmarks.summon {unit, event, points [[esq, frente], ...]}`; os efeitos de coluna do invocador
-  (`fx` com `anchor: [esq, frente]`) ficam nesses pontos. O `spawn` da unidade tem de caber entre o evento do
-  invocador e o fim da invocação (OCASO `summon` 23 → `summon_end` 58; OSSINHO `ready` no quadro 34 → 57).
-  `blender/summon_show.py --arg host=<HOST>` ensaia o contrato da engine no viewport (skill `character-show`: cena
-  `CF_Show`, strips NLA, a unidade enterrada até o evento). **`--arg mode=off` antes de voltar ao pipeline.**
+- **An authored attack clip** (no actor take) is `"kind": "oneshot"` + `recipe.returns_hub: true`. `"kind": "attack"`
+  is the mocap path: `polish.py` looks for `<NAME>_attack_mocap`, fails, and the following stages of `clip.sh` run
+  on the action that was on the rig and CORRUPT it (OSSINHO's walk had to be rebuilt). A build that failed in
+  polish = rebuild the clip that was on screen too.
+- **Planted staff**: `weapon.wrist_frame` / `aim_frame: "root"` (keys in the unit's space, not the chest's) and
+  `weapon.foot` (the prop's foot is in charge; `blender/prop_foot.py` measures it, the build reports `foot_off_mm`).
+  Careful: with `aim_frame: "root"` the word `"ready"` is a different pose — on a unit carrying a prop, frame 1 came out
+  59 mm away from the base pose.
+- **A unit born from the ground = an elevator** (`"sink": [[quadro, metros, ease], ...]` (frame, meters, ease) →
+  `blender/sink.py`, after stance). Every stage works with the floor at z = 0; so the clip is authored with the unit
+  STANDING on its own floor and `sink` lowers the root. Hand on the edge of the hole = hand keyed HIGH in unit space
+  (`weapon.off.wrist_frame: "root"`, height = −sink + 2 cm, one key per frame). Generate the `sink` and those keys
+  TOGETHER, from a single physical curve: exit velocity and `g` (9.81 / 900 m per frame²) give the apex and the landing
+  frame (OSSINHO: leaves at 1.94 m/s, 7 cm above the floor at the apex, lands 10 frames later; `sink` > 0 = in the air).
+  `floor_probe.py` judges against ITS floor (`cf_sink` stays in the action). The clip does not start in the base pose
+  (frame 1 = buried) and ends in it.
+  - The order in which things come out is MEASURED: height of each tip (hand, top of the skull, blade tip) against −sink,
+    frame by frame. A blade at 40° "floated" lying on the surface; at 52° it was still buried and at 80° two frames later:
+    it pierces point first.
+  - A body with no reach over the head (`overhead` 0.72): roll the torso 20° so the rising shoulder goes high and the
+    skull gets out of the way — a 12 cm window in which only the hand shows.
+- **Death of a light unit**: thrown, not toppled — a `root pitch` that only accelerates (6 → 14°/frame), `floor_hop` in
+  flight, no `plant`. On the floor, remove EVERYTHING crooked the guard has: the turn becomes `roll` (section 7, ALVOR),
+  the forward lean becomes a sit-up (shoulders 4 cm in the air), and a head tilted back holds the whole body up on the
+  nape when the skull is thicker than the ribs (hips 3.4 cm above the floor): head in line with the spine and the root
+  2–3° short of −90.
+- **Summoner**: `landmarks.summon {unit, event, points [[esq, frente], ...]}` (points as [left, forward]); the summoner's
+  column effects (`fx` with `anchor: [esq, frente]`) sit at those points. The unit's `spawn` must fit between the
+  summoner's event and the end of the summon (OCASO `summon` 23 → `summon_end` 58; OSSINHO `ready` on frame 34 → 57).
+  `blender/summon_show.py --arg host=<HOST>` rehearses the engine contract in the viewport (skill `character-show`: scene
+  `CF_Show`, NLA strips, the unit buried until the event). **`--arg mode=off` before going back to the pipeline.**
 
-## 2d. Magia à distância: projétil juntado na mão, lob, alvo (OCASO `spell`)
+## 2d. Ranged spell: a projectile gathered in the hand, lob, target (OCASO `spell`)
 
-- Segunda habilidade à distância de um personagem: troque QUEM trabalha e a TRAJETÓRIA (ataque = cajado chicoteado, raio reto
-  em 4 quadros; magia = cajado plantado, a mão de osso junta o orbe e o lança por baixo, arco balístico de 19 quadros).
-- `landmarks.fx.<x>` kind bolt com `"bone": "DEF-hand.L"` e `"at"` sob a palma (no repouso as palmas olham para baixo: o
-  lado da palma é −Z); no clipe `{"charge": f, "fire": f}`: o orbe nasce na mão e cresce, tremendo, até soltar. `"arc"` +
-  `"ballistic": true` = parábola cronometrada por g; `"burst_frames"` / `"burst_scale"` a explosão. Um aura com `anchor` no
-  ponto de impacto (`hexmark`) faz a marca no chão; chaveie o clarão no `lands_frame` que o build imprime.
-- **Soltura = a mão anda para onde o orbe vai.** Meça o portador (osso do efeito) nos 3 quadros antes da soltura: a mão tem
-  de acelerar (1,7 → 3,1 → 4,2 m/s) e sair na direção e na velocidade do orbe (4,6 m/s, 6°). Com o giro do tronco a mão varre
-  para DENTRO: solte à frente do ombro do braço que lança, não cruzando o corpo (35° de diferença na v1).
-- Corpo de manto/capuz: depois da soltura, pouco giro e pouca inclinação do tronco e a cabeça sem giro residual — o capuz
-  afundava 50 mm na gola; `head_limits` ligados pioraram (67 mm: contra-giram a cabeça para trás).
-- Todo clipe do personagem precisa chavear o efeito novo apagado: re-chaveie só os efeitos (assign + `fx.py --arg fx=<bloco>`)
-  em vez de reconstruir os corpos.
+- A character's second ranged ability: change WHO does the work and the TRAJECTORY (attack = whipped staff, straight bolt
+  in 4 frames; spell = planted staff, the bone hand gathers the orb and throws it underhand, a 19-frame ballistic arc).
+- `landmarks.fx.<x>` kind bolt with `"bone": "DEF-hand.L"` and `"at"` under the palm (at rest the palms face down: the
+  palm side is −Z); in the clip `{"charge": f, "fire": f}`: the orb is born in the hand and grows, trembling, until it is
+  released. `"arc"` + `"ballistic": true` = a parabola timed by g; `"burst_frames"` / `"burst_scale"` the explosion. An
+  aura with an `anchor` at the impact point (`hexmark`) makes the mark on the floor; key the flash on the `lands_frame`
+  the build prints.
+- **Release = the hand moves where the orb goes.** Measure the carrier (the effect's bone) in the 3 frames before the
+  release: the hand must accelerate (1.7 → 3.1 → 4.2 m/s) and leave in the orb's direction and at its speed (4.6 m/s,
+  6°). With the torso turn the hand sweeps INWARD: release in front of the throwing arm's shoulder, not across the body
+  (35° of difference in v1).
+- Cloak/hood body: after the release, little torso turn and lean and no residual turn on the head — the hood
+  sank 50 mm into the collar; turning `head_limits` on made it worse (67 mm: they counter-turn the head backward).
+- Every clip of the character must key the new effect as off: re-key only the effects (assign + `fx.py --arg fx=<bloco>`)
+  instead of rebuilding the bodies.
 
-## 2e. O que um show / rodada pede dos clipes
+## 2e. What a show / round asks of the clips
 
-Cenas com vários personagens (invocação, arena, rodada com patrulha, vida e erguer) são da skill `character-show` — ela
-COMPÕE os clipes daqui, não anima nada novo. O que ela precisa que cada clipe já traga:
-- **Andar** com `walk->idle best_frame` no manifesto de export (o show começa a patrulha na fase que termina nesse
-  quadro) e `ground_speed_m_s` medido (é a velocidade com que a raiz anda no show e na Unity).
-- **One-shots que voltam à pose-base** (ataque, magia, invocação): o show cruza 5 quadros para o próximo clipe; um
-  one-shot que termina longe da base estala mesmo cruzado.
-- **Projétil assado** (`fx.py` grava `cf_fx_<fx>` na ação): o show e a engine tiram dele o quadro em que o alvo é
-  atingido. Re-chaveou o efeito? Reconstrua a ação, senão o alvo apanha no quadro antigo.
-- **`spawn` que cabe na invocação** (evento → `summon_end`) e começa enterrado (`sink`): o mesmo clipe serve para erguer
-  um invocado de um corpo.
+Scenes with several characters (summon, arena, a round with patrol, health and raising) belong to the `character-show`
+skill — it COMPOSES the clips from here and animates nothing new. What it needs each clip to already bring:
+- **Walk** with `walk->idle best_frame` in the export manifest (the show starts the patrol at the phase that ends on that
+  frame) and a measured `ground_speed_m_s` (it is the speed at which the root moves in the show and in Unity).
+- **One-shots that return to the base pose** (attack, spell, summon): the show crossfades 5 frames into the next clip; a
+  one-shot that ends far from the base pops even when crossfaded.
+- **Baked projectile** (`fx.py` writes `cf_fx_<fx>` into the action): the show and the engine take from it the frame on
+  which the target is hit. Re-keyed the effect? Rebuild the action, otherwise the target is hit on the old frame.
+- **A `spawn` that fits inside the summon** (event → `summon_end`) and starts buried (`sink`): the same clip serves to
+  raise a summoned unit from a body.
 
-## 2f. Unidade SEM arma — as garras são a arma (FERRUGEM: `characters/ferrugem/anim/*.clip.json`)
+## 2f. A unit WITHOUT a weapon — the claws are the weapon (FERRUGEM: `characters/ferrugem/anim/*.clip.json`)
 
-`rig/landmarks.json` sem `weapon` / `onehand` → o `clip.sh` roda `freehands.py release=1 blend=0`: ele é dono dos dois
-braços do quadro 1 ao fim. Tudo mora no bloco `free_hands` do clipe (cabeçalho do `freehands.py`):
-- pose-base própria: `hub.clip.json` (`source: "hold"`, `pose_from: <NAME>_rest`, 3 quadros); todo clipe usa
-  `pose_from: <NAME>_hub`. O `hubcheck.sh` compara com a ação de `pose_from`.
-- `hands` = punho no espaço do PEITO `[quadro, esq, frente, cima, ease]`; `pole` = cotovelo preferido; `claws` =
-  `[quadro, graus .01, graus .02, ease]` (curvar traz as pontas para a frente; o polegar acompanha).
-- `swivel_samples: 180, swivel_hold: 2` em TODOS os clipes do personagem (a pose-base também): com o padrão 36 / 6 o
-  cotovelo fica preso 20° fora depois de um arco grande (156 mm no fim do rastelo).
-- `hand_length` = mão + garra MEDIDA (fatias do braço; 0,45 no FERRUGEM, padrão 0,15) e `tip_floor` em todo clipe que
-  chega perto do chão — com o padrão as garras entraram 21 mm no piso na morte.
-- **Chaves de punho param em toda chave** (ease por trecho, sem spline): para pêndulo / ciclo gere UMA chave linear por
-  quadro de uma função (cosseno com atraso: braço de gorila 3 quadros atrás das pernas, arco +cos²); para golpe gere por
-  slerp de DIREÇÕES na esfera do braço com o alcance à parte (antebraço curto: alcance = cotovelo; d 0,375 ≈ 60°).
-  Geradores de exemplo no `_doc` / `free_hands._` dos clipes do FERRUGEM.
-- Antes de chavear, MEÇA quanto o tronco projeta à frente da linha dos ombros contra o comprimento do braço (caldeira
-  0,44 × braço 0,41: o punho nunca passa na frente; o golpe é nas laterais e a mão + garras viram para dentro).
-- Idle com pêndulo + `hub_pin: ["all", 0]`: o pin tira o valor do quadro 1 de TODO quadro. Se as mãos não estão na
-  pose-base no quadro 1 (atraso do pêndulo), elas ficam deslocadas o loop inteiro (29 mm). Faça a emenda num
-  assentamento: tronco parado no centro 6–8 quadros, braços chegando — o quadro 1 é a pose-base de verdade.
-- Morte de corpo largo à frente (barril): cai sobre o corpo, a cabeça fica livre; braços mantêm a direção do MUNDO durante
-  o tombo (giram ~90° para a frente no espaço do peito) e pousam depois; pé redondo pousa pela borda (pitch −40° depois
-  do tombo: o canto sola+frente para baixo). `boots_low_last_mm` no log do `limbfloor` tem de dar ~0.
-- **Ciclo que é dono dos braços** (andar): `free_hands.cyclic: true`. O cotovelo lembra o quadro anterior; começando
-  frio ele termina o ciclo noutro giro (FERRUGEM: chaves idênticas, emenda de 10,5 mm na mão e 36 mm nas garras → 0,0).
-- **Golpe sem arma: meça a velocidade de MUNDO** (`motion_table.py` → `speed.hand_l / head / hips`), não a do gerador. O
-  pulso no mundo é corpo + braço: chaves de golpe do tronco com `out` fazem o corpo saltar no início e FREAR até o
-  contato (cabeça 29 cm num quadro). Golpe do corpo com `in` em 4 quadros, quadril 1 quadro à frente do braço: o pulso
-  acelera até o contato (0,4 → 1,3 → 5,5 → 11,2 → 15,9 → 12,0 no hit) e a cabeça fica em ~6 m/s.
-- **Braço de gorila no andar** (o que o vídeo mostrou): além do pêndulo para a frente, os dois braços ABREM para os
-  lados em cada fase de balanço (3 quadros depois do pé) e o corpo rola sobre o pé de apoio (9°, 7 cm). 34° leu como
-  "bater asa" (críticos, rodada 1): ~21° com PAUSA no topo (sobe 40 %, segura 15 %, desce 45 %, mais devagar que g),
-  pulso ≤ 75 cm. Braço jogado para TRÁS passa na coxa: abdução mínima 0,5 × o balanço para trás (polegar 11 mm na perna).
-  Mais rolagem custa perna: abaixe o andar até `hips_drop_max_cm` 0.
-- **Pé de máquina CAI**: `gait.land: "drop"` (polish.py) — depois do topo do arco z = lift·(1 − s²), 0,5 → 2,5 cm/quadro
-  até o chão; o seno chega PLANO (1,9–2,0) e lê como pé colocado. Pisão: tronco −2,4 cm em 2 quadros (`out`), peito
-  +3° um quadro depois, cabeça +4° mais um; `heel_strike` 0 num pedestal.
-- **Braço pendurado atrasa o giro do peito** (idle, estalos de yaw): seguidor amortecido do yaw (ω 0,55, ζ 0,75) e a mão
-  girada de volta por (seguidor − peito) no espaço do peito. CONFIRA O SINAL pela velocidade da mão: errado ela adianta
-  (0,45 → 0,86 m/s); certo, 0,38. Yaw + = para a esquerda dele: (esq, frente) → (esq + θ·frente, frente − θ·esq).
-- **Barriga grande e pêndulo lateral**: a mão que balança PARA o corpo bate nele (33 mm dentro). Ela fica com ~20 % do
-  balanço e escorrega pela FRENTE da barriga com o resto.
-- **Garras apontando para o corpo** (mão ao lado da barriga depois do golpe): `free_hands.twist` aceita CHAVES
-  `{"L": [[quadro, graus, ease?], ...]}` — gira a mão no antebraço (FERRUGEM: −45° tirou 97 mm do polegar; +45° piorou;
-  meça os dois sinais e o chão, −45 no braço direito pôs o indicador 17 mm no piso → −25).
-- **Morte com braços no mundo**: interpole o deslocamento ombro→punho por DIREÇÃO (slerp) + COMPRIMENTO; a reta corta a
-  corda e o cotovelo fecha no meio (mão 32 mm no próprio braço). Repouso com alcance ≥ ~0,93 do braço no plano do chão
-  (0,337 m deixou a mão 75 mm dentro do úmero). Garras de mão deitada: meça o sinal da curva contra o chão (neste rig
-  curvar levantou as pontas: −6 → 57 mm no piso, +18 → limpo).
-- **Contato com as peças rígidas que a unidade tem**: `landmarks.contact.things` (palmas, lâminas). Só com a cabeça os
-  cinco clipes do FERRUGEM passavam "limpos" com garras 150 mm dentro do corpo. Não liste um osso cujas faces também
-  seguem outros (o tambor no `spine.003`: falso 10 cm). Lâmina com casca aberta cruza a própria dobradiça desde o
-  quadro 1: declare `contact.lap` com o motivo depois de olhar o close-up.
-- **Gerador de caminho: nada de `max()` / `min()` duros entre curvas.** O valor fica contínuo, a derivada salta onde
-  elas se cruzam: no andar do FERRUGEM (flare de um passo × abertura do balanço para trás) isso pôs 33 m/s² num quadro
-  nas chaves do punho, que nenhuma folha mostrava. Use max arredondado `½(a+b+√((a−b)²+k²))` e rampa arredondada no
-  lugar de `max(0, x)`, e meça a 2ª diferença das CHAVES (antes do build) e do punho no mundo (`motion_table`) depois.
-- **Graus de giro do cotovelo enganam**: `swivel_jumps` = ângulo entre dois vetores de giro no mundo; com o punho
-  andando 17 cm num quadro o eixo ombro→punho gira e o "salto" sobe sem o cotovelo saltar. Leia a corda em mm (3º número)
-  e o `swivel_jump_chest_max_deg` (o giro no espaço do PEITO: o corpo carregando o braço não conta). Dano do FERRUGEM:
-  13,8° no mundo, 1,5–6,2° no peito.
-- **Número de mão é no MUNDO.** O README r2 do FERRUGEM disse "o punho cai 17 cm no recuo" (espaço do peito, com o
-  corpo girando ao contrário); no mundo eram 46,9 cm num quadro, mais rápido que o golpe — os três críticos pegaram.
-  Garra que bateu fica no lugar: escreva o punho no mundo depois do contato (base do peito gravada de um build, `BASIS=`).
-- **Teto de altura que ACOMPANHA o ombro**: um teto fixo no mundo segura o punho enquanto o pisão baixa o ombro e a mão
-  abre para fora (emenda 78,8 mm). `zcap + 0,8 × (z_ombro − z_ombro_topo)`: pulso ≤ 68,4 cm (era 75), emenda 46,4.
-- **Passo em apoio simples**: margem negativa no passo de volta do dano (−2,8 cm, 5 quadros) se resolve rolando o
-  tronco ~6° PARA o pé de apoio durante o passo (+0,7..+1,2), não alongando o passo.
+`rig/landmarks.json` without `weapon` / `onehand` → `clip.sh` runs `freehands.py release=1 blend=0`: it owns both
+arms from frame 1 to the end. Everything lives in the clip's `free_hands` block (header of `freehands.py`):
+- its own base pose: `hub.clip.json` (`source: "hold"`, `pose_from: <NAME>_rest`, 3 frames); every clip uses
+  `pose_from: <NAME>_hub`. `hubcheck.sh` compares against the `pose_from` action.
+- `hands` = wrist in CHEST space `[quadro, esq, frente, cima, ease]`; `pole` = preferred elbow; `claws` =
+  `[quadro, graus .01, graus .02, ease]` (frame, degrees for .01, degrees for .02, ease; curling brings the tips
+  forward; the thumb follows).
+- `swivel_samples: 180, swivel_hold: 2` on ALL the character's clips (the base pose too): with the default 36 / 6 the
+  elbow stays stuck 20° out after a big arc (156 mm at the end of the rake).
+- `hand_length` = hand + claw MEASURED (arm slices; 0.45 on FERRUGEM, default 0.15) and `tip_floor` on every clip that
+  comes close to the floor — with the default the claws went 21 mm into the floor in the death.
+- **Wrist keys stop at every key** (ease per segment, no spline): for a pendulum / cycle generate ONE linear key per
+  frame from a function (lagged cosine: gorilla arm 3 frames behind the legs, arc +cos²); for a strike generate it by
+  slerp of DIRECTIONS on the arm's sphere with the reach handled separately (short forearm: reach = elbow; d 0.375 ≈
+  60°). Example generators in the `_doc` / `free_hands._` of FERRUGEM's clips.
+- Before keying, MEASURE how far the torso projects in front of the shoulder line against the arm length (boiler
+  0.44 × arm 0.41: the wrist never gets in front of it; the strike is at the sides and the hand + claws turn inward).
+- Idle with a pendulum + `hub_pin: ["all", 0]`: the pin subtracts the frame-1 value from EVERY frame. If the hands are
+  not in the base pose on frame 1 (pendulum lag), they stay offset for the whole loop (29 mm). Put the seam in a
+  settle: torso still at the center for 6–8 frames, arms arriving — frame 1 is the real base pose.
+- Death of a body that is wide at the front (barrel): it falls onto the body, the head stays free; the arms keep their
+  WORLD direction during the topple (they turn ~90° forward in chest space) and land afterwards; a round foot lands on
+  its edge (pitch −40° after the topple: the sole+front corner down). `boots_low_last_mm` in the `limbfloor` log must
+  come out ~0.
+- **A cycle that owns the arms** (walk): `free_hands.cyclic: true`. The elbow remembers the previous frame; starting
+  cold it ends the cycle on another swivel (FERRUGEM: identical keys, a 10.5 mm seam at the hand and 36 mm at the claws →
+  0.0).
+- **Unarmed strike: measure the WORLD speed** (`motion_table.py` → `speed.hand_l / head / hips`), not the generator's.
+  The wrist in the world is body + arm: torso strike keys with `out` make the body jump at the start and BRAKE until the
+  contact (head 29 cm in one frame). A body strike with `in` over 4 frames, hips 1 frame ahead of the arm: the wrist
+  accelerates up to the contact (0.4 → 1.3 → 5.5 → 11.2 → 15.9 → 12.0 on the hit) and the head stays at ~6 m/s.
+- **Gorilla arm in the walk** (what the video showed): besides the forward pendulum, both arms OPEN to the
+  sides in each swing phase (3 frames after the foot) and the body rolls over the planted foot (9°, 7 cm). 34° read as
+  "flapping wings" (critics, round 1): ~21° with a PAUSE at the top (rise 40 %, hold 15 %, fall 45 %, slower than g),
+  wrist ≤ 75 cm. An arm thrown BACK passes through the thigh: minimum abduction 0.5 × the backward swing (thumb 11 mm
+  into the leg). More roll costs leg: lower the walk until `hips_drop_max_cm` is 0.
+- **A machine foot DROPS**: `gait.land: "drop"` (polish.py) — after the top of the arc z = lift·(1 − s²), 0.5 → 2.5
+  cm/frame down to the floor; the sine arrives FLAT (1.9–2.0) and reads as a placed foot. Stomp: torso −2.4 cm over 2
+  frames (`out`), chest +3° one frame later, head +4° one more; `heel_strike` 0 on a pedestal.
+- **A hanging arm lags behind the chest turn** (idle, yaw snaps): a damped follower of the yaw (ω 0.55, ζ 0.75) and the
+  hand turned back by (follower − chest) in chest space. CHECK THE SIGN through the hand's speed: wrong, it leads
+  (0.45 → 0.86 m/s); right, 0.38. Yaw + = to his left: (left, fwd) → (left + θ·fwd, fwd − θ·left).
+- **Big belly and a lateral pendulum**: the hand that swings TOWARD the body hits it (33 mm inside). It keeps ~20 % of
+  the swing and slides across the FRONT of the belly with the rest.
+- **Claws pointing at the body** (hand beside the belly after the strike): `free_hands.twist` accepts KEYS
+  `{"L": [[quadro, graus, ease?], ...]}` (frame, degrees, ease) — it turns the hand on the forearm (FERRUGEM: −45° took
+  97 mm off the thumb; +45° made it worse; measure both signs and the floor, −45 on the right arm put the index finger
+  17 mm into the floor → −25).
+- **Death with the arms in the world**: interpolate the shoulder→wrist offset by DIRECTION (slerp) + LENGTH; the straight
+  line cuts the chord and the elbow closes in the middle (hand 32 mm into its own arm). A rest pose with reach ≥ ~0.93 of
+  the arm in the floor plane (0.337 m left the hand 75 mm inside the humerus). Claws of a lying hand: measure the sign of
+  the curl against the floor (on this rig curling lifted the tips: −6 → 57 mm into the floor, +18 → clean).
+- **Contact with the rigid parts the unit has**: `landmarks.contact.things` (palms, blades). With only the head, the
+  five FERRUGEM clips passed as "clean" with claws 150 mm inside the body. Do not list a bone whose faces also
+  follow other bones (the drum on `spine.003`: a false 10 cm). A blade with an open shell crosses its own hinge from
+  frame 1: declare `contact.lap` with the reason after looking at the close-up.
+- **Path generator: no hard `max()` / `min()` between curves.** The value stays continuous, but the derivative jumps where
+  they cross: in FERRUGEM's walk (one step's flare × the backward-swing opening) this put 33 m/s² in one frame
+  into the wrist keys, which no sheet showed. Use a smooth max `½(a+b+√((a−b)²+k²))` and a smooth ramp in place of
+  `max(0, x)`, and measure the 2nd difference of the KEYS (before the build) and of the wrist in the world
+  (`motion_table`) afterwards.
+- **Elbow swivel degrees deceive**: `swivel_jumps` = the angle between two swivel vectors in the world; with the wrist
+  moving 17 cm in one frame the shoulder→wrist axis turns and the "jump" grows without the elbow jumping. Read the chord
+  in mm (3rd number) and `swivel_jump_chest_max_deg` (the swivel in CHEST space: the body carrying the arm does not
+  count). FERRUGEM's hit: 13.8° in the world, 1.5–6.2° in the chest.
+- **A hand number is in the WORLD.** FERRUGEM's r2 README said "the wrist drops 17 cm in the recoil" (chest space, with
+  the body turning the other way); in the world it was 46.9 cm in one frame, faster than the strike — all three critics
+  caught it. A claw that hit stays in place: write the wrist in the world after the contact (chest basis recorded from
+  a build, `BASIS=`).
+- **A height ceiling that FOLLOWS the shoulder**: a ceiling fixed in the world holds the wrist while the stomp lowers the
+  shoulder and the hand opens outward (78.8 mm seam). `zcap + 0,8 × (z_ombro − z_ombro_topo)` (z_ombro = shoulder
+  height, z_ombro_topo = its top): wrist ≤ 68.4 cm (was 75), seam 46.4.
+- **A step on single support**: a negative margin on the hit's step back (−2.8 cm, 5 frames) is solved by rolling the
+  torso ~6° TOWARD the planted foot during the step (+0.7..+1.2), not by lengthening the step.
 
-## 2g. Prop GIGANTE na mão livre e o que foi medido no GRANIZO v3 (`characters/granizo/anim/*.clip.json`)
+## 2g. A GIANT prop in the free hand and what was measured on GRANIZO v3 (`characters/granizo/anim/*.clip.json`)
 
-- **Sinais, medidos (não suponha)**: roll + em peito / tronco / cabeça BAIXA o ombro DIREITO (o hub v3 caiu para o lado
-  da picareta uma rodada inteira com +6; −7 deu shL 0,987 / shR 1,088); loc `side` + é para a ESQUERDA dele; yaw − do
-  tronco leva o ombro direito para trás; pitch − da cabeça = para cima/trás; no `onehand`, `aim` [elevação, rumo] com
-  rumo + para a esquerda.
-- **Cabeça isolada do Rigify + corcunda**: a cabeça não segue o peito. Toda dobra e todo roll do tronco levam a cabeça
-  junto (chaves de `head roll` espelhando o `chest roll` no idle); para trás, no máximo ~−10°.
-- **Segurar no spline pede chave duplicada**: a tangente vem dos vizinhos, duas chaves iguais (28, 60) ainda escorregam.
-  Pose congelada = 28 `"in"`, 30, 60.
-- **`still` não trava no mundo e `drag` continua depois da última chave**: com o tronco andando o prop `still` anda
-  junto; a picareta com `drag` 0,2 seguiu balançando na vitória. Parada seca = `drag` 0.
-- **Punho pendurado amplifica**: `up` do pulso livre em espaço do peito → altura do punho com ganho 1,3–1,8 (o braço
-  dobra no balanço). Correção por quadro com ganho 1 passou do ponto; 0,55 convergiu (walk_b arrastando 0–1,6 cm).
-- **Arrastar no andar no lugar é de graça**: o prop fica parado em relação ao corpo e o chão desliza por baixo. Onde o
-  pé que balança cruza o punho (61 mm), o desvio de 20 cm por cima da bota virou uma batida do clipe.
-- **O que um prop gigante NÃO faz** (meça antes de autorar): picareta plantada em pé na vitória (a mão pega a 21–37 % do
-  cabo: o pomo só chega ao chão agachado); batida no peito com um punho de 0,6 m (todo caminho 13–46 mm dentro do peito).
-- **Efeito de chão `spikes`** (`fx.py`): `layout: line` = rachadura até o alvo + 7 cristais em sequência (o último estoura
-  no `hit`); `layout: cluster` = cristais crescendo em volta (morte-iceberg, coroa da vitória). `lean` [22, 14] escondeu as
-  pontas DENTRO do corpo curvado; [6, 8–14] faz a jaula. Coroa ATRÁS dele: `radius` < recuo do centro (0,58 < 0,78).
-  Aditivo sobre chão claro estoura para branco: cor [0,16, 0,55, 1,0] / núcleo [0,62, 0,9, 1,0] / força 1,15.
-- **Veias de gelo** = `shock` com `links` em ordem (punho → cotovelo → ombro → crosta) + `zones` limitando o clipe a esses
-  links (nada arcando para o chão).
-- `step_out_of_first` de 367–381 mm num hit/morte pode ser osso de EFEITO (faísca nascendo de escala 0 no ponto do
-  estouro): liste os ossos antes de caçar o "pulo".
+- **Signs, measured (do not assume them)**: roll + on chest / torso / head LOWERS the RIGHT shoulder (the v3 hub leaned
+  toward the pickaxe side for a whole round with +6; −7 gave shL 0.987 / shR 1.088); loc `side` + is to HIS LEFT; yaw −
+  of the torso takes the right shoulder back; pitch − of the head = up/back; in `onehand`, `aim` [elevation, heading] with
+  heading + to the left.
+- **Rigify's isolated head + a hunchback**: the head does not follow the chest. Every bend and every roll of the torso
+  takes the head along (`head roll` keys mirroring the `chest roll` in the idle); backward, at most ~−10°.
+- **Holding on a spline needs a duplicated key**: the tangent comes from the neighbors, so two equal keys (28, 60) still
+  slide. Frozen pose = 28 `"in"`, 30, 60.
+- **`still` does not lock in the world and `drag` continues after the last key**: with the torso moving, the `still`
+  prop moves along with it; the pickaxe with `drag` 0.2 kept swinging in the victory. Dead stop = `drag` 0.
+- **A hanging wrist amplifies**: `up` of the free wrist in chest space → wrist height with a gain of 1.3–1.8 (the arm
+  bends in the swing). A per-frame correction with gain 1 overshot; 0.55 converged (walk_b dragging 0–1.6 cm).
+- **Dragging in an in-place walk is free**: the prop stays still relative to the body and the floor slides underneath.
+  Where the swinging foot crosses the wrist (61 mm), the 20 cm detour over the boot became a beat of the clip.
+- **What a giant prop does NOT do** (measure before authoring): a pickaxe planted upright in the victory (the hand grips
+  at 21–37 % of the handle: the pommel only reaches the floor while crouching); a chest beat with a 0.6 m fist (every
+  path 13–46 mm inside the chest).
+- **Floor effect `spikes`** (`fx.py`): `layout: line` = a crack up to the target + 7 crystals in sequence (the last one
+  bursts on the `hit`); `layout: cluster` = crystals growing around him (iceberg death, victory crown). `lean` [22, 14]
+  hid the tips INSIDE the curved body; [6, 8–14] makes the cage. A crown BEHIND him: `radius` < the center offset
+  (0.58 < 0.78). Additive over a light floor blows out to white: color [0.16, 0.55, 1.0] / core [0.62, 0.9, 1.0] /
+  strength 1.15.
+- **Ice veins** = `shock` with `links` in order (wrist → elbow → shoulder → crust) + `zones` restricting the clip to those
+  links (nothing arcing to the floor).
+- **Area spell that pins a pack from below** (CENTELHA's "Prison of Light", r5): all of it is `fx.py` (meshes on their
+  own bones, keyed by the clip, they travel in the FBX), through three generic extensions with no character name in the
+  code:
+  - **`shock` with fixed points** (`"fixed"`: left, forward, height in unit space; no bone, no snap) and points on a PROP
+    (`"snap": false`, the tips of the staff's fork). A bolt that "rises from the floor" = a link between a point on the
+    floor (`g`, z 0.02) and one at the target's knee height (`k`, 0.40 m on a 0.70 m OSSINHO), plus knee↔knee links
+    that chain the pack together and arcs from `k` down to the floor around it (`ground`). The clip's `zones` move the
+    SAME effect: crest + staff + hand up to frame 65, the targets' zone from 66 on (a single effect = 26 bones, not two
+    effects).
+  - **`arc_min`**: a short arc (static on the crest, between the fingers: 5–15 cm) was only 5–15 mm wide because the
+    width scales with the length. `arc_min` 0.024 m holds the thickness on screen.
+  - **`spikes` layout `spots`**: cracks run from the seal's center to each target (0.2 m/frame) and `count / len(spots)`
+    crystals grow around each one, leaning INWARD (`lean` [10, 8]°, a 0.21 m ring): the bars of light over the legs.
+    One target's crystals break together, one target per frame. Without it the 5 targets became a single iceberg
+    (`cluster`).
+  - Colors as read on the field: light = white-gold (crystal, sigil, seal, shackles), electricity = blue
+    [0.32, 0.58, 1.0] with a gold spark. Measured: [0.45, 0.7, 1] washed out to WHITE over the gold seal (additive);
+    shackles [1, 0.9, 0.58] at 1.5 = white glass (ice) → [1, 0.8, 0.38] at 1.15; the seal at 2.4 was a gold PLATE →
+    1.7; the staff's crystal in gold read as a TORCH against the copper → cyan-white, and smaller.
+- A `step_out_of_first` of 367–381 mm on a hit/death can be an EFFECT bone (a spark born from scale 0 at the burst
+  point): list the bones before hunting the "jump".
 
-## 3. Os cinco clipes
+## 3. The five clips
 
-| Clipe | `kind` | Como nasce | O que conferir |
+| Clip | `kind` | How it is born | What to check |
 |---|---|---|---|
-| attack | `attack` | take de ator retargetado + `layers`; perfil da arma autoral | antecipação com slow-in, golpe que só acelera, 3 quadros de hit-stop, assentamento VISÍVEL, saída num arco só |
-| idle | `loop` | hold na base + respiração, troca de peso, olhar, um "heft" | o CORPO respira (≥ 2 px a 64 px), não a arma; nada parado; reversões desencontradas |
-| walk | `loop` | `recipe.gait` paramétrico no lugar | `travel_render.py`: pé fica no disco (≤ 1 cm por contato); arma não balança mais que o corpo |
-| hit | `oneshot` | camadas autorais base → base | recuo no 1º quadro, rosto livre, recuperação mais longa que o golpe, último quadro = base |
-| death | `oneshot` | camadas + `floor: "body"` + `weapon.release` + `free_hands` | o golpe fatal é MAIOR que o dano comum; queda monótona; `ground_table.py`; prop solto sai pela FRENTE da queda |
+| attack | `attack` | retargeted actor take + `layers`; authored weapon profile | anticipation with slow-in, a strike that only accelerates, 3 frames of hit-stop, a VISIBLE settle, exit in a single arc |
+| idle | `loop` | hold on the base + breathing, weight shift, gaze, one "heft" | the BODY breathes (≥ 2 px at 64 px), not the weapon; nothing still; mismatched reversals |
+| walk | `loop` | parametric `recipe.gait` in place | `travel_render.py`: the foot stays on the disc (≤ 1 cm per contact); the weapon does not sway more than the body |
+| hit | `oneshot` | authored layers base → base | recoil on the 1st frame, face clear, recovery longer than the strike, last frame = base |
+| death | `oneshot` | layers + `floor: "body"` + `weapon.release` + `free_hands` | the fatal strike is BIGGER than a regular hit; a monotonic fall; `ground_table.py`; the released prop leaves to the FRONT of the fall |
 
-**Toda chave é uma parada.** Uma camada interpola com ease ATÉ cada chave (velocidade zero em toda chave): certo
-para extremos, gagueira para chaves de passagem a 1–2 quadros (cabeça a 2,0 / 1,5 / 2,2 / 1,4 / 3,1 m/s). Em camadas
-de corpo (torso, peito, cabeça) use `"interp": "spline"`: UMA curva monótona por todas as chaves — plana nos extremos,
-andando nas passagens, nunca além de uma chave; um ease escrito na chave (`"in"` do golpe, `"hold"`) continua valendo
-no trecho dela. E menos chaves: um mergulho é início, fundo e volta.
+**Every key is a stop.** A layer interpolates with an ease UP TO each key (zero velocity at every key): right
+for extremes, a stutter for passing keys 1–2 frames apart (head at 2.0 / 1.5 / 2.2 / 1.4 / 3.1 m/s). On body
+layers (torso, chest, head) use `"interp": "spline"`: ONE monotonic curve through all the keys — flat at the extremes,
+moving through the passing keys, never overshooting a key; an ease written on a key (the strike's `"in"`, `"hold"`) still
+applies to its segment. And fewer keys: a dip is start, bottom and return.
 
-Ciclo é anel: último quadro == primeiro, filtros periódicos, molas herdam a volta anterior. Os braços fecham em
-ângulo FÍSICO (o `weapon.py` reporta `cycle_closed_deg`): a referência transportada quadro a quadro volta girada pelo
-que o caminho encerrou (holonomia) — quanto mais o corpo mexe num idle, maior a emenda que isso abriria (6,4 mm). `hub_pin` prende as pontas
-na base (`"all"` num hold; não em ciclo de marcha; nunca prender barba/tecido).
+A cycle is a ring: last frame == first, periodic filters, springs inherit the previous lap. The arms close at a
+PHYSICAL angle (`weapon.py` reports `cycle_closed_deg`): a reference transported frame by frame comes back rotated by
+what the path enclosed (holonomy) — the more the body moves in an idle, the bigger the seam this would open (6.4 mm).
+`hub_pin` pins the ends to the base (`"all"` on a hold; not on a gait cycle; never pin beard/cloth).
 
-## 4. Massas soltas e props vestidos
+## 4. Loose masses and worn props
 
-Correntes novas entram por `landmarks.extras` + `secondary.chains`; `secondary.collide_prefix` (ex.: `["hair"]`) diz
-quais colidem com o prop. Um rabo de cavalo que já nasce encostado nas costas marca contato de 2–6 cm quando a cabeça
-joga para trás (dano, morte): olhe de costas antes de tratar como defeito.
+New chains come in through `landmarks.extras` + `secondary.chains`; `secondary.collide_prefix` (e.g. `["hair"]`) says
+which of them collide with the prop. A ponytail that is born already touching the back marks 2–6 cm of contact when the
+head throws back (hit, death): look from behind before treating it as a defect.
 
-- `secondary.py` escreve SÓ rotação (nunca `bone.matrix`: a escala de pose acumula); `clip.sh` reprova se
-  `pose_scale_off` ≠ vazio. Teto de balanço por personagem em `landmarks.json → secondary.chains`.
-- Prop vestido que entra na cabeça: regra em `landmarks.json → keepclear` (eixo fixo do personagem, teto em graus).
-- Sobreposição que é do traje, não do movimento, é DECLARADA (`contact.lap`) com tolerância própria — nunca subir o
-  portão geral.
+- `secondary.py` writes ONLY rotation (never `bone.matrix`: the pose scale accumulates); `clip.sh` fails if
+  `pose_scale_off` ≠ empty. Per-character swing ceiling in `landmarks.json → secondary.chains`.
+- A worn prop that goes into the head: a rule in `landmarks.json → keepclear` (a fixed character axis, ceiling in degrees).
+- Overlap that belongs to the costume, not to the motion, is DECLARED (`contact.lap`) with its own tolerance — never
+  raise the general gate.
 
-## 5. Medir (depois de qualquer mudança)
+## 5. Measure (after any change)
 
 ```
 ./clip.sh <id> <NAME> <clip>
-python3 cf/bl.py run blender/contact_probe.py --arg name=<NAME> --arg action=<NAME>_<clip> --arg out=<json>   # 6 mm; sem "penetrations"
+python3 cf/bl.py run blender/contact_probe.py --arg name=<NAME> --arg action=<NAME>_<clip> --arg out=<json>   # 6 mm; no "penetrations"
 python3 cf/bl.py run blender/motion_table.py  --arg name=<NAME> --arg action=<NAME>_<clip> --arg out=<json>
-.venv/bin/python cf/path_plot.py <clip>_motion.json out.jpg [--window f0 f1]   # o ARCO da cabeça da arma, 1 ponto por quadro
+.venv/bin/python cf/path_plot.py <clip>_motion.json out.jpg [--window f0 f1]   # the ARC of the weapon head, 1 point per frame
 ```
 
-`./contacts.sh <id> <NAME> <clip>...` roda as duas sondas e imprime uma linha por par: contato malha×malha (6 mm) e
-**chão** (`floor_probe.py`, 5 mm: nada da unidade dentro do piso em nenhum quadro — corpo, props de `cf_props` E a arma
-de `cf_weapon_prop`; `airborne` = quadros em que nada do corpo nem do que ele ainda segura toca o chão). O chão precisa de juiz próprio: nenhum render mostra o que está sob o piso — a morte do ALVOR passou em
-tudo com a bota 6 cm enterrada, e quem achou foi a `bodyMinYCm` da Unity. Em clipe com `floor: "body"`: as chaves dos
-pés estão no espaço da RAIZ (depois de tombar 90°, "atrás" é "embaixo" e `fwd` é "para cima"); chaveie as pernas
-pousando 1 cm DENTRO do chão e o `limbfloor.py` faz disso um contato; cotovelos respeitam `weapon.floor_radius`.
+`./contacts.sh <id> <NAME> <clip>...` runs both probes and prints one line per pair: mesh×mesh contact (6 mm) and
+**floor** (`floor_probe.py`, 5 mm: nothing of the unit inside the floor on any frame — body, props from `cf_props` AND
+the weapon from `cf_weapon_prop`; `airborne` = frames in which nothing of the body nor of what it still holds touches
+the floor). The floor needs its own judge: no render shows what is under the floor — ALVOR's death passed
+everything with the boot 6 cm buried, and what caught it was Unity's `bodyMinYCm`. In a clip with `floor: "body"`: the
+foot keys are in ROOT space (after toppling 90°, "behind" is "below" and `fwd` is "up"); key the legs
+landing 1 cm INSIDE the floor and `limbfloor.py` turns that into a contact; elbows respect `weapon.floor_radius`.
 
-Os cinco clipes têm de começar na mesma pose (≤ 1 mm) e os ciclos fechar (emenda ≤ 2 mm, correntes < 0,5°):
-`./hubcheck.sh <id> <NAME> <clip>` (ataque primeiro) dá os três números e o maior passo por quadro de cada osso.
+The five clips must start in the same pose (≤ 1 mm) and the cycles must close (seam ≤ 2 mm, chains < 0.5°):
+`./hubcheck.sh <id> <NAME> <clip>` (attack first) gives the three numbers and the largest per-frame step of each bone.
 
-Leia a `motion_table` como o crítico lê: velocidade da cabeça quadro a quadro (serrilhado = chaves demais), altura do
-quadril (platô = limite das pernas), faixa de altura da cabeça da arma contra a do quadril, `slip` e `under_floor`.
-Sinal de build contaminado: pose-base agachada, `lean_in_out.torso.fwd` perto de 90°, `foot_pull_in` de dezenas de
-cm — o clipe herdou a pose do que estava na tela (corrigido: `retarget.py` e `polish.py` partem de pose limpa; se
-voltar, alguém atribuiu uma action sem `cflib.assign_action`).
+Read the `motion_table` the way the critic reads it: head speed frame by frame (jagged = too many keys), hip
+height (plateau = leg limit), the weapon head's height range against the hips', `slip` and `under_floor`.
+Sign of a contaminated build: a crouched base pose, `lean_in_out.torso.fwd` near 90°, a `foot_pull_in` of tens of
+cm — the clip inherited the pose of whatever was on screen (fixed: `retarget.py` and `polish.py` start from a clean pose;
+if it comes back, someone assigned an action without `cflib.assign_action`).
 
-## 6. Os 12 princípios, conferidos no tamanho de jogo
+## 6. The 12 principles, checked at game size
 
-A unidade tem ~64 px na tela: 1 px ≈ 2 cm. O que não mexe 2 px não existe. Do veredito de princípios da rodada 9:
+The unit is ~64 px tall on screen: 1 px ≈ 2 cm. What does not move 2 px does not exist. From the round-9 principles
+verdict:
 
-- **Antecipação**: o mergulho não pode ser o movimento mais rápido do clipe (era 3,8 m/s contra 3,4 do golpe). Entre com
-  slow-in e troque espera por percurso.
-- **Follow-through**: depois do hit-stop o corpo assenta de forma visível (squash do tronco, cabeça acena, prop quica
-  6–9°) e a saída começa cedo; 17 quadros parados leem como quadro congelado.
-- **Arcos**: desenhe o caminho da cabeça da arma (`path_plot.py`). Um chute lateral de 20 cm na saída do golpe não
-  aparecia em nenhuma das seis câmeras.
-- **Peso consistente**: a arma não pode subir mais rápido do que desce, nem balançar 3× o corpo no andar; quem paga
-  cada movimento da cabeça da arma é o tronco.
-- **Ação secundária**: respiração no peito/ombros; olhar ≥ 20° de cabeça (8° = 1 px); o gesto de personagem tem de
-  aparecer na câmera de jogo.
-- **Exagero em escada**: morte > dano > idle. Compare o deslocamento do primeiro quadro entre os clipes.
-- **Sobreposição**: quadris arrancam 2–3 quadros antes dos braços; mãos não pousam no mesmo quadro; reversões não caem
-  todas na emenda do ciclo.
-- **Afirmação escrita tem de bater com a imagem**: se a receita diz "o rosto fica legível" ou "a cabeça do martelo
-  desliza", meça. Três afirmações do primeiro personagem perderam para as fotos.
+- **Anticipation**: the dip cannot be the fastest movement of the clip (it was 3.8 m/s against the strike's 3.4). Go in
+  with slow-in and trade waiting for travel.
+- **Follow-through**: after the hit-stop the body settles visibly (torso squash, the head nods, the prop bounces
+  6–9°) and the exit starts early; 17 still frames read as a frozen frame.
+- **Arcs**: draw the path of the weapon head (`path_plot.py`). A 20 cm sideways kick at the exit of the strike did not
+  show in any of the six cameras.
+- **Consistent weight**: the weapon cannot rise faster than it falls, nor sway 3× as much as the body in the walk; the
+  torso is what pays for each movement of the weapon head.
+- **Secondary action**: breathing in the chest/shoulders; head gaze ≥ 20° (8° = 1 px); the character's gesture must
+  show up in the game camera.
+- **Exaggeration as a ladder**: death > hit > idle. Compare the first-frame displacement across the clips.
+- **Overlap**: the hips start 2–3 frames before the arms; the hands do not land on the same frame; reversals do not all
+  fall on the cycle seam.
+- **A written claim must match the image**: if the recipe says "the face stays readable" or "the hammer head
+  slides", measure it. Three claims about the first character lost to the pictures.
 
-## 6b. Os princípios de JOGO no clipe: leitura, essência, golpe, bando, close
+## 6b. The GAME principles in the clip: reading, essence, strike, pack, close-up
 
-Os 12 princípios (§6) dizem se o movimento é bom; estes dizem se ele FUNCIONA num jogo mobile visto de cima a 64 px.
-Cada item tem o número e onde conferir. O juiz final é o laboratório da arena na Unity (skill `character-show` §9d),
-com os blends da engine — não o viewport.
+The 12 principles (§6) say whether the movement is good; these say whether it WORKS in a mobile game seen from above at
+64 px. Each item has the number and where to check it. The final judge is the arena lab in Unity (skill `character-show`
+§9d), with the engine's blends — not the viewport.
 
-### Leitura das poses (um relance)
+### Reading the poses (one glance)
 
-- Cada clipe tem 1–2 **poses-chave** que contam a ação sozinhas, como silhueta, na câmera de jogo (55° de cima):
-  ataque = preparo (extremo da antecipação) + contato; dano = recuo do 1º quadro; morte = o corpo no chão; invocação = o
-  gesto-assinatura. Confira essas poses no laboratório (tecla V: silhueta 1:1, `+1 quadro` para parar nelas) e no
-  pacote de revisão (silhueta 64 px). Pose que vira mancha = refaça a pose, não o tempo.
-- **Movimentos largos**: o preparo leva a cabeça da arma a ≥ 0,35 × a altura da unidade do repouso (≥ 22 px a 64 px);
-  o tronco inclina ≥ 10–15° para dentro do golpe no contato; olhar de cabeça ≥ 20° (8° = 1 px, §6). Vista de cima, a
-  extensão PARA A FRENTE e PARA O LADO lê; para cima/baixo encurta (cos 55° ≈ 0,57): exagere o que vai na direção da
-  câmera de jogo.
-- A pose de contato aponta o prop/membro TODO para o alvo, fora do contorno do corpo — é o quadro que o jogador vê
-  congelado pelo hit-stop.
+- Each clip has 1–2 **key poses** that tell the action on their own, as a silhouette, in the game camera (55° from
+  above): attack = wind-up (the extreme of the anticipation) + contact; hit = the recoil of the 1st frame; death = the
+  body on the floor; summon = the signature gesture. Check those poses in the lab (key V: 1:1 silhouette, the
+  `+1 quadro` button (step one frame) to stop on them) and in the review package (64 px silhouette). A pose that turns
+  into a blob = redo the pose, not the timing.
+- **Broad movements**: the wind-up takes the weapon head ≥ 0.35 × the unit's height away from rest (≥ 22 px at 64 px);
+  the torso leans ≥ 10–15° into the strike at the contact; head gaze ≥ 20° (8° = 1 px, §6). Seen from above, extension
+  FORWARD and SIDEWAYS reads; up/down foreshortens (cos 55° ≈ 0.57): exaggerate what goes in the direction of the game
+  camera.
+- The contact pose points the WHOLE prop/limb at the target, outside the body's outline — it is the frame the player
+  sees frozen by the hit-stop.
 
-### Essência no movimento
+### Essence in motion
 
-- Leia a tabela traço × clipe do brief (skill `character-design` §0b) antes de autorar cada clipe e escreva, no topo do
-  `clip.json` (`_doc`), qual traço o clipe amplifica e COMO (um número: graus, quadros, cm). Um clipe que não mostra
-  nenhum dos 1–2 traços é genérico — o crítico de princípios recebe a pergunta "o traço X aparece aqui?".
-- Ritmo é personalidade: o pesado demora no preparo e é curto no golpe; o ágil tem preparo curto e mais quadros de
-  assentamento; o frio não tem movimento secundário rápido (OCASO anda a 0,32 m/s e o momento dele é a invocação).
+- Read the brief's trait × clip table (skill `character-design` §0b) before authoring each clip and write, at the top of
+  the `clip.json` (`_doc`), which trait the clip amplifies and HOW (one number: degrees, frames, cm). A clip that shows
+  neither of the 1–2 traits is generic — the principles critic gets the question "does trait X show here?".
+- Rhythm is personality: the heavy one lingers in the wind-up and is short in the strike; the agile one has a short
+  wind-up and more settle frames; the cold one has no fast secondary motion (OCASO walks at 0.32 m/s and his moment is
+  the summon).
 
-### O tempo vende o golpe (contato claro + segurar o impacto + efeito + tela)
+### Timing sells the strike (clear contact + holding the impact + effect + screen)
 
-Tempos atuais (30 fps, `export/<NAME>.json → clips.attack.events`):
+Current timings (30 fps, `export/<NAME>.json → clips.attack.events`):
 
-| Unidade | Ápice do preparo | Contato (`hit`) | Assenta | Total | Contato em s |
+| Unit | Wind-up apex | Contact (`hit`) | Settles | Total | Contact in s |
 |---|---|---|---|---|---|
-| OSSINHO | 8 | 12 | 22 | 28 | 0,37 |
-| FERRUGEM | 16 | 23 (+ `rake2` 28) | 33 | 54 | 0,73 |
-| OCASO (cajado) | 16 | 24 (`land` 28) | 47 | 54 | 0,77 |
-| ALVOR | 16 | 25 | 40 | 58 | 0,80 |
-| BRASA / GRANIZO | 17 | **40** | — | **85** | **1,30** |
+| OSSINHO | 8 | 12 | 22 | 28 | 0.37 |
+| FERRUGEM | 16 | 23 (+ `rake2` 28) | 33 | 54 | 0.73 |
+| OCASO (staff) | 16 | 24 (`land` 28) | 47 | 54 | 0.77 |
+| ALVOR | 16 | 25 | 40 | 58 | 0.80 |
+| BRASA / GRANIZO | 17 | **40** | — | **85** | **1.30** |
 
-Regras:
-- **Golpe curto**: do ápice do preparo ao contato ≤ 4 quadros no leve (OSSINHO 4), ≤ 9 no pesado (ALVOR 9); nos 3
-  quadros antes do contato a ponta percorre ≥ 50 % do arco (o "estalo": velocidade da ponta crescendo até o contato,
-  `motion_table → speed.<arma>_head`, §2b "espaçamento"). O contato de um corpo a corpo cai até ~0,8 s do início do
-  clipe. BRASA e GRANIZO (23 quadros do ápice ao contato, contato a 1,30 s) estão FORA desta regra: limite conhecido
-  dos martelos, a refazer quando forem retemporados.
-- **Quadro de contato claro**: o evento `hit` cai EXATAMENTE no quadro de extensão máxima (a ponta no alvo). `drag` na
-  arma atrasa o contato 1 quadro: golpe que tem de acertar no evento leva `drag 0` (TECHNIQUES, "Hold on impact"). No
-  laboratório: velocidade 1/10, Encostar, Atacar, e `+1 quadro` até o leitor mostrar `[HIT-STOP]` — o quadro mostrado
-  ali (`attack 25/58`) é a pose congelada que o jogador vê. Se não é a pose de contato, o evento está errado.
-- **Segurar no impacto**: o clipe segura 2–3 quadros no contato (assentamento visível depois, §6); a engine soma
-  `hitStop` 0,06 s (≈ 2 quadros) congelando atacante E vítima, e `killStop` 0,13 s no golpe que mata. Total parado no
-  contato: 4–6 quadros num golpe comum, 6–8 na morte. Ajuste no laboratório (hit-stop −/+, 20 ms por clique) e
-  registre o valor no `state.json` do personagem se ele pedir outro.
-- **Efeito e tela no mesmo quadro**: no evento `hit` a engine solta a faísca (`CFBattleFx.Spark`), congela os dois e
-  manda o `Struck` → a câmera da arena treme (0,35–0,9° pelo dano, 1,5° na morte, decai em ~0,1 s) e dá um soco de
-  FOV (0,9° / 2,2°). Clipe de magia: o dano e o tremor são no `land` (o projétil pousa), o lançador NÃO congela.
-- **Escada de exagero na engine também**: dano comum < golpe que mata (killStop > hitStop, tremor 1,5° > 0,9°, faísca
-  1,8× no raio da morte).
+Rules:
+- **Short strike**: from the wind-up apex to the contact ≤ 4 frames on a light unit (OSSINHO 4), ≤ 9 on a heavy one
+  (ALVOR 9); in the 3 frames before the contact the tip covers ≥ 50 % of the arc (the "snap": tip speed growing up to the
+  contact, `motion_table → speed.<arma>_head` (`<arma>` = the weapon), §2b "spacing"). A melee contact falls within ~0.8 s
+  of the start of the clip. BRASA and GRANIZO (23 frames from apex to contact, contact at 1.30 s) are OUTSIDE this rule: a
+  known limit of the hammers, to be redone when they are re-timed.
+- **A clear contact frame**: the `hit` event falls EXACTLY on the frame of maximum extension (the tip on the target).
+  `drag` on the weapon delays the contact by 1 frame: a strike that must land on the event takes `drag 0` (TECHNIQUES,
+  "Hold on impact"). In the lab: speed 1/10, "Encostar" (close in), "Atacar" (attack), and `+1 quadro` until the readout
+  shows `[HIT-STOP]` — the frame shown there (`attack 25/58`) is the frozen pose the player sees. If it is not the
+  contact pose, the event is wrong.
+- **Hold on impact**: the clip holds 2–3 frames at the contact (a visible settle afterwards, §6); the engine adds
+  `hitStop` 0.06 s (≈ 2 frames) freezing attacker AND victim, and `killStop` 0.13 s on the killing strike. Total stillness
+  at the contact: 4–6 frames on a regular strike, 6–8 on the death. Tune it in the lab (hit-stop −/+, 20 ms per click)
+  and record the value in the character's `state.json` if it asks for a different one.
+- **Effect and screen on the same frame**: on the `hit` event the engine fires the spark (`CFBattleFx.Spark`), freezes
+  both and sends `Struck` → the arena camera shakes (0.35–0.9° by damage, 1.5° on the death, decaying in ~0.1 s) and
+  gives a FOV punch (0.9° / 2.2°). Spell clip: the damage and the shake happen on `land` (the projectile lands); the
+  caster does NOT freeze.
+- **The exaggeration ladder in the engine too**: regular hit < killing strike (killStop > hitStop, shake 1.5° > 0.9°,
+  spark 1.8× on the Death Ray).
 
-### Pequenas variações num bando (truque barato, efeito grande)
+### Small variations in a pack (a cheap trick, a big effect)
 
-- Unidade que vem em grupo (OSSINHO, toda invocação, todo esquadrão) não pode andar em passo: duas cópias iguais lado a
-  lado leem como clones.
-- **Piso, já na engine** (`CFBattle.varySquad`): cada invocado ganha velocidade de Animator ×0,92–1,08 e tamanho
-  ×0,95–1,05, determinísticos pela chave da unidade (sequência de razão áurea — um hash de vizinhos deu ×0,93 aos dois
-  esqueletos de uma mesma invocação); a velocidade de chão do andar segue velocidade × tamanho, então o pé não patina.
-  Medido: OSSINHO_A ×1,04 / 0,97, OSSINHO_B ×0,98 / 1,05.
-- **O truque inteiro (próximo passo)**: 2–3 andares por unidade de bando (`walk`, `walk_b`, `walk_c`) — mesmo período
-  ±2 quadros, mesma pose do quadro 1 e mesmo `enter_phase`/`leave_phase` (contrato da engine), mas balanço do quadril
-  ±20 %, braço da arma em outra altura, cabeça inclinada para um lado, um passo mancando. Cada variante tem seu
-  `ground_speed_m_s` no manifesto; a engine escolhe pela chave. Comece pelo OSSINHO (é o único bando hoje).
-- Primeiro `walk_b` feito: GRANIZO (2026-11-14), o machado APOIADO NO OMBRO (o `walk` balança ao lado), período 30
-  (walk 32), 0,742 × 0,756 m/s, silhueta 30–36 % diferente na mesma fase a 64 px. Duas lições: (1) arrastar a arma
-  atrás do corpo some da câmera de jogo quando a unidade vem para a câmera (lê desarmado) — a variante tem de mudar
-  o que se vê de cima e dos dois lados; (2) um loop cuja pegada é longe da pose-base precisa de `weapon.lock_hub: false`
-  (o solver prendia o 1º quadro no cotovelo e giro da pose-base: cabeça do machado 117 mm dentro da cabeça).
-- No laboratório: Invocar 2–3 vezes, depois Andar (esteira no lugar) — os esqueletos têm de estar em fases diferentes
-  do ciclo depois de 2 s.
+- A unit that comes in a group (OSSINHO, every summon, every squad) cannot walk in step: two identical copies side by
+  side read as clones.
+- **Baseline, already in the engine** (`CFBattle.varySquad`): each summoned unit gets an Animator speed of ×0.92–1.08 and
+  a size of ×0.95–1.05, deterministic by the unit's key (golden-ratio sequence — a hash of neighboring keys gave ×0.93 to
+  both skeletons of the same summon); the walk's ground speed follows speed × size, so the foot does not slide.
+  Measured: OSSINHO_A ×1.04 / 0.97, OSSINHO_B ×0.98 / 1.05.
+- **The full trick (next step)**: 2–3 walks per pack unit (`walk`, `walk_b`, `walk_c`) — same period
+  ±2 frames, same frame-1 pose and same `enter_phase`/`leave_phase` (engine contract), but hip sway
+  ±20 %, the weapon arm at another height, the head tilted to one side, a limping step. Each variant has its own
+  `ground_speed_m_s` in the manifest; the engine picks one by the key. Start with OSSINHO (it is the only pack today).
+- First `walk_b` made: GRANIZO (2026-11-14), the axe RESTING ON THE SHOULDER (the `walk` swings it at his side), period 30
+  (walk 32), 0.742 × 0.756 m/s, silhouette 30–36 % different at the same phase at 64 px. Two lessons: (1) dragging the
+  weapon behind the body vanishes from the game camera when the unit comes toward the camera (it reads as unarmed) — the
+  variant must change what is seen from above and from both sides; (2) a loop whose grip is far from the base pose needs
+  `weapon.lock_hub: false` (the solver pinned frame 1 to the base pose's elbow and swivel: axe head 117 mm inside the
+  head).
+- In the lab: "Invocar" (summon) 2–3 times, then "Andar" (walk; treadmill in place) — the skeletons must be in different
+  phases of the cycle after 2 s.
 
-### Momentos de close (vitória, desbloqueio, menu) = personalidade
+### Eyes (rig with `eye.L` / `eye.R`, CENTELHA 2026-11-14)
 
-- O take **Retrato** da arena vira o vencedor para a câmera e o inclina ~7° para trás pelos pés; se o personagem tiver
-  um clipe `victory` (ou `celebrate` / `cheer`), a arena o toca nesse momento. O primeiro é o do GRANIZO
-  (`characters/granizo/anim/victory.clip.json`, 2026-11-14): copie dele.
-- O que o GRANIZO ensinou no `victory` de uma mão: (1) o troféu erguido com o braço levantado deixa o cabo em linha com o
-  antebraço → bracelete 36,8 mm; antebraço HORIZONTAL e cabo em pé (aim ~110°, cabeça um pouco para trás) = 0;
-  (2) parada, a lâmina rola para o conforto do pulso e mostra o FIO à câmera: `weapon.edge` [[f, esq, frente, cima]]
-  (espaço da unidade) aponta o fio para o lado e mostra a face larga da cabeça; (3) olhos que acendem = dois `flame`
-  pequenos (`size` 0,05, `level` 0 por padrão) no osso da cabeça, na posição dos olhos achada pela cor da textura.
-- `victory`: one-shot de 1,5–2,5 s que termina numa pose SEGURADA (`hold_last_frame`), o traço da essência no máximo
-  (o teimoso bate o martelo no chão e estufa o peito; o frio só ergue o cajado e inclina a cabeça). A raiz NÃO gira (a
-  engine gira e inclina); cabeça erguida 5–10° na pose final; mãos e prop longe do rosto; expressão de rosto se o rig
-  tiver os ossos (skill `character-rig` §0).
-- Julgue no Retrato (laboratório → botão Retrato, ou depois de um nocaute): rosto no terço superior, nada na frente
-  dele, a expressão lê a ~400 px de altura de corpo.
+An `eyes` block in the clip.json → `blender/eyes.py` (runs after the hub pin). `open` [[f, opening]], `look`
+[[f, yaw, pitch]] (+ = her left / up), `blinks` [f of the closed eye], `side` {"L": {"open": ...}} (wink), `loop`.
+Acting rules: the eyes anticipate the head by 2–3 frames; a blink at every head turn and every 2–4 s, irregular
+(sometimes a double one); no blinking while concentrating; squint at the flash; widen in a fright; close slowly in the
+death; wink in the victory close-up. Frame 1 = neutral (the pin applies to the eyes too); a cyclic walk may start off
+neutral (`pin_first: false`). Details and numbers: `docs/TECHNIQUES.md` ("Olhos vivos", living eyes).
 
-## 7. Referência em vídeo = o próprio personagem, membros coloridos
+### Close-up moments (victory, unlock, menu) = personality
 
-Decisão do usuário. Por clipe: `blender/limb_paint.py --arg mode=on --arg still=mocap/char_color_still.png` →
-`cf/runware.py video --model bytedance:seedance@2.0 --first-frame …` (o prompt repete as cores e trava a câmera) →
-`cf/colorpose.py track` / `remap` → `blender/board.py --arg sequence=…` (vídeo ao lado, sincronizado) →
-`./refcheck.sh <id> <NAME> <clip> <tag>`. `reference.role: "gate"` (idle, andar: < 0,06 geral, nenhum membro > 0,10)
-ou `"beats"` (dano, morte: o vídeo só dá os tempos — não chame o número de aprovado). A métrica de cor de uma vista não
-vê profundidade: é portão, não objetivo. Ator humano (Kling) só para o take de mocap do ataque; pose 3D em personagem
-estilizado falha. Job Seedance preso em "processing": o cliente desiste em 1500 s SEM cobrança (confira `runware.py balance` antes e
-depois). Relance UMA vez (só com `--first-frame`); se prender de novo, reporte — no GRANIZO os dois jobs prenderam e
-o personagem ficou sem referência (declarado em `state.json → reference`), não invente o portão.
-A referência é do personagem COMO ELE É: se ele ganhar um prop ou mudar de guarda depois dos vídeos (ALVOR ganhou o
-escudo), arquive os antigos (`mocap/v1_*`), refaça o still colorido na pose-base nova (esconda a malha de efeito; escolha
-a vista em que os quatro membros aparecem — um escudo de frente tapa tudo) e gere de novo. ~US$ 0,80 por vídeo:
-confira o saldo, anote em `costs.jsonl` e no `state.json`.
+- The arena's **Retrato** (portrait) take turns the winner toward the camera and tilts him ~7° back from the feet; if
+  the character has a `victory` clip (or `celebrate` / `cheer`), the arena plays it at that moment. The first one is
+  GRANIZO's (`characters/granizo/anim/victory.clip.json`, 2026-11-14): copy from it.
+- What GRANIZO taught in a one-handed `victory`: (1) the trophy raised with the arm up leaves the handle in line with
+  the forearm → bracer 36.8 mm; a HORIZONTAL forearm and an upright handle (aim ~110°, head a little back) = 0;
+  (2) at rest, the blade rolls toward the wrist's comfort and shows its EDGE to the camera: `weapon.edge`
+  [[f, left, forward, up]] (unit space) points the edge to the side and shows the broad face of the head; (3) eyes
+  that light up = two small `flame` effects (`size` 0.05, `level` 0 by default) on the head bone, at the eye position
+  found by the texture color.
+- `victory`: a one-shot of 1.5–2.5 s that ends in a HELD pose (`hold_last_frame`), with the essence trait at its maximum
+  (the stubborn one slams the hammer on the floor and puffs out his chest; the cold one only raises the staff and tilts
+  his head). The root does NOT turn (the engine turns and tilts it); head raised 5–10° in the final pose; hands and prop
+  away from the face; a facial expression if the rig has the bones (skill `character-rig` §0).
+- Judge it in the Retrato (lab → "Retrato" button, or after a knockout): face in the upper third, nothing in front
+  of it, the expression reads at ~400 px of body height.
 
-Como LER a comparação (OCASO / OSSINHO, vídeos feitos depois dos clipes — vale também para auditar um clipe pronto):
-- A posição absoluta carrega um deslocamento comum quando o rastreador lê brilho do piso como torso (torso 0,44 em
-  toda versão): compare o membro RELATIVO À CABEÇA (centro − centro da cabeça) e o EIXO do membro. Foi assim que o andar
-  do OSSINHO mostrou o que a nota geral escondia: armR 0,078 / 25,6° → 0,059 / 12,2° com a nota geral parada em 0,19.
-- Leia o erro por quadro RELATIVO À CABEÇA (dx, dy, ângulo do eixo de cada membro) antes de mudar chave: no andar do
-  FERRUGEM foi isso que mostrou os braços do vídeo abrindo 0,2 da altura para os lados a cada passo. Vídeo assimétrico
-  (um passo abre os braços, o outro não) não se copia num ciclo de jogo: fique simétrico e declare o número.
-- Varra a fase do `time_map` (`colorpose.py compare --map` com 0..período de deslocamento): se as pernas têm o mínimo
-  no deslocamento 0 e um braço não muda com a fase, o erro do braço é de POSE, não de tempo.
-- Arma de uma mão no andar: a lâmina ANDA COM O ANTEBRAÇO (em pé quando a mão vem à frente, deitada para a frente
-  quando desce ao quadril). Chaveada ao contrário o punho encosta no limite (55,7° de 60) e a lâmina tapa o rosto.
-- Emenda de ciclo "assimétrica" em metros de mundo: compare com o OUTRO extremo do ciclo antes de mexer em chave —
-  as pontas da spline já têm tangente zero no espaço do peito; o que sobra é o tronco carregando o braço.
+## 7. Video reference = the character itself, with colored limbs
 
-### Lições da rodada 2 do ALVOR (pés, queda, mão livre)
+The user's decision. Per clip: `blender/limb_paint.py --arg mode=on --arg still=mocap/char_color_still.png` →
+`cf/runware.py video --model bytedance:seedance@2.0 --first-frame …` (the prompt repeats the colors and locks the
+camera) → `cf/colorpose.py track` / `remap` → `blender/board.py --arg sequence=…` (the video alongside, synchronized) →
+`./refcheck.sh <id> <NAME> <clip> <tag>`. `reference.role: "gate"` (idle, walk: < 0.06 overall, no limb > 0.10)
+or `"beats"` (hit, death: the video only gives the timings — do not call the number approved). The color metric of a
+single view does not see depth: it is a gate, not a goal. A human actor (Kling) only for the attack's mocap take; a 3D
+pose on a stylized character fails. A Seedance job stuck in "processing": the client gives up at 1,500 s WITHOUT being
+charged (check `runware.py balance` before and after). Relaunch ONCE (only with `--first-frame`); if it gets stuck again,
+report it — on GRANIZO both jobs got stuck and the character was left without a reference (declared in
+`state.json → reference`); do not invent the gate.
+The reference is of the character AS HE IS: if he gets a prop or changes his guard after the videos (ALVOR got the
+shield), archive the old ones (`mocap/v1_*`), redo the colored still in the new base pose (hide the effect mesh; choose
+the view in which all four limbs show — a shield seen from the front covers everything) and generate again. ~US$ 0.80 per
+video: check the balance, note it in `costs.jsonl` and in `state.json`.
 
-- **Pé que gira no chão gira sobre a bola**: `rot yaw` no `foot_ik` gira no TORNOZELO. Junte `loc side/fwd` =
-  `v − R(yaw)·v` (v = tornozelo → bola) e, se o calcanhar sobe, `pitch` + `loc up` = braço × sen(pitch). Confira com
-  percurso de calcanhar × ponta (o `slip` do `motion_table.py` não vê giro no lugar).
-- **Passo de volta**: o tronco muda de pé (chaves `torso fwd/side`) 2–5 quadros ANTES de o pé sair; o pé sobe ≥ 5 cm.
-- **Guarda de lado + queda de costas**: o yaw da guarda vira roll no chão. Meça a altura dos dois ombros no último
-  quadro e acerte `chest roll` até igualarem; depois confira `ground_table.py` (costas, peito, cabeça, mãos).
-- **Mão que soltou a arma**: `weapon.hand_floor` = espessura real do punho; `finger_floor` / `finger_radius` mantêm
-  os dedos fora do piso. Prop que repousa sobre o corpo: desça até o portão dizer "touches" com 3–5 mm.
-- **Loop com `drag`**: a mola já roda sobre o período; se `last vs first` passar de 1 mm, é chave, não mola.
-- Leia a saída INTEIRA do `contacts.sh` (as linhas de penetração vêm primeiro).
+How to READ the comparison (OCASO / OSSINHO, videos made after the clips — this also applies to auditing a finished
+clip):
+- The absolute position carries a common offset when the tracker reads floor brightness as torso (torso 0.44 in
+  every version): compare the limb RELATIVE TO THE HEAD (center − head center) and the limb's AXIS. That is how OSSINHO's
+  walk showed what the overall score hid: armR 0.078 / 25.6° → 0.059 / 12.2° with the overall score stuck at 0.19.
+- Read the per-frame error RELATIVE TO THE HEAD (dx, dy, axis angle of each limb) before changing a key: in FERRUGEM's
+  walk that is what showed the video's arms opening 0.2 of the height to the sides at each step. An asymmetric video
+  (one step opens the arms, the other does not) is not copied into a game cycle: stay symmetric and declare the number.
+- Sweep the phase of the `time_map` (`colorpose.py compare --map` with offsets 0..period): if the legs have their minimum
+  at offset 0 and an arm does not change with the phase, the arm's error is one of POSE, not of timing.
+- A one-handed weapon in the walk: the blade MOVES WITH THE FOREARM (upright when the hand comes forward, lying forward
+  when it drops to the hip). Keyed the other way, the wrist hits the limit (55.7° of 60) and the blade covers the face.
+- An "asymmetric" cycle seam in world meters: compare it with the OTHER extreme of the cycle before touching a key —
+  the spline ends already have zero tangent in chest space; what remains is the torso carrying the arm.
 
-## 7b. QUADRÚPEDE: andadura gerada, chaves por cima, solucionadores (UIVO)
+### Lessons from ALVOR's round 2 (feet, fall, free hand)
 
-- `./quad_build.sh <id> <NAME> <clip>...` = `blender/quad_clip.py` (andadura + chaves + molas + solucionadores, medido) +
-  `fx.py` com o bloco `fx` do clipe. Reconstruir joga a action fora: os efeitos SEMPRE são rechaveados junto.
-  Cabeçalho do `quad_clip.py` = o contrato (parâmetros em graus/metros: `torso_*`, `hips/chest/neck/head_*`, `head_level`,
-  `jaw`, `ear*`, `tail1..4_*`, `scap_*`, `paw_<FL|FR|RL|RR>_x/y/z/curl`, `follow_<pata>`; `torso_pivot`; `solve`).
-- Loop com `gait`: touchdown / duty / lift / curl / toeoff / reach / scap / bob / pitch / flex / surge / roll / yaw /
-  head_level / tail / ears / jaw por fase. A pata de apoio anda +S/2 → −S/2 (S = v × duty × T): patinação 0 por construção.
-  Galope (UIVO 14 f, 4,4 m/s) e meio-galope (25 f, 2,18 m/s) já calibrados em `characters/uivo/anim/`.
-- One-shot: só chaves (geradas por um `make_clips.py` do personagem a partir da pose-base do idle — todo clipe começa nela).
-  `follow_<pata>` = a pata vai com o corpo (morte de lado, empinar); `head_level` = a cabeça do caçador fica estável.
-- Solucionadores (relatório `solve`): `paw_floor` (almofada de pele abaixo do chão → sobe o alvo), `reach` (vão na cadeia,
-  dedo que não chega E o osso DEF que ESTICA — o Rigify esconde a falta de alcance esticando a canela: 3,6 % → pele 0,69 cm
-  no FBX; pata plantada de andadura não é puxada, viraria patinação), `body_floor` (morte, sentar: o chão é o alvo).
-  Se o `body_floor` precisa erguer muito, a pose está errada (o uivo sentado subiu 7,4 cm e as patas da frente flutuaram 6 cm).
-- Portão: `reach` ≤ 0,05 cm, `stretch %` ≤ 2,5, `floor` ≥ −0,5 cm, `slip` 0 (exceto deslize autoral, ex. o dano), e OLHE
-  de lado e em 3/4 (`strip`) — a métrica não vê "parece cachorro pedindo".
-- Referência Seedance (§7) num quadrúpede: o tempo do usuário manda, o vídeo dá a FORMA. Rode o `refcheck.sh` em todos os
-  clipes com bloco `reference`; no UIVO ele mudou dois: ataque (encolher BAIXO e esticar num bote longo) e vitória (uivo SENTADO).
-- **`end` de todo one-shot** (`home` padrão / `hold` / `chain`): com `home` as molas assentam nos últimos `settle` quadros
-  (8) e o último quadro É a pose-base; o que desloca a pata (empurrão do dano) tem de VOLTAR num passo (sobe, viaja no ar,
-  pousa na vertical) — "a próxima transição leva para casa" fez o export marcar o dano como HOLD e a Unity travar o lobo.
-  Morte e vitória: `"end": "hold"`; o dash que termina no alvo: `"end": "chain"`.
-- **Interpolação padrão = spline** (Hermite monótona, Fritsch–Carlson): o smoothstep antigo PARAVA todo canal em toda
-  chave — 60+ canais parando juntos é o "robótico" que o usuário viu em todos os clipes. Ease explícito (`in` / `out` /
-  `lin` / `hold`) continua valendo onde se quer parada; loop: tangentes dão a volta na emenda. Andaduras também levam
-  molas (`GAIT_SPRINGS` no `make_clips.py` do UIVO: cabeça pelo balanço do tronco, pontas das orelhas, cauda 2–4).
-- **Idle de caçador olha em sacadas** (vira em 3 quadros com `out`, segura, vira) — um seno lento na cabeça lê como torreta.
-- **Morte com batidas** (UIVO r2, 60 f): impacto (ganido) → cambaleia (uma pata SAI para o lado) → as traseiras cedem →
-  a frente dobra → rola de lado com `in` → quica → assenta → membros por molas da rolagem → último suspiro → chute e
-  garra. `follow_*` entra durante a queda. O `body_floor` recalcula a elevação NECESSÁRIA a cada passada (somar
-  flutuava 6,5–13 cm).
-- **Morte de quadrúpede = DE LADO, rolada PASSANDO de 90°** (UIVO r3, 52 f; a de barriga do r2 leu como "agachado vivo"
-  nos três críticos, e a de peito com as patas abertas leu como "vai dar o bote"). A parte mais LARGA decide como ele
-  deita: a 86° a juba escora a frente (quadril 19 cm, cabeça 10 cm no ar). Role até ~111°: o flanco de trás desce antes
-  da juba e as patas de cima caem sobre a barriga. Duas regras da ordem `Rz(yaw) Ry(roll) Rx(pitch)` do `quad_clip`:
-  o pitch do tronco num corpo rolado inclina o eixo longo no mundo por `sen(p)·cos(roll)` (p −22 a 111° = traseira 7,7°
-  abaixo), e depois de ~90° o YAW relativo de quadril / pescoço / cabeça vira para o chão (yaw + = para a esquerda dele =
-  para baixo). Resultado: cabeça no chão (pescoço 1,5 cm), elevação 14,4 → 7,5 cm. As patas-pivô seguram `follow`
-  0 → 0,15 até o corpo passar por cima delas. A ALTURA na câmera de jogo quase não muda (67 × 118 px deitado × 71 × 129
-  em pé): de 55° de cima a profundidade de um corpo deitado projeta como em pé — julgue a FORMA (patas para fora,
-  barriga para cima), não os px.
-- **Leia `paw_fix_at`** (quadro da maior correção de cada pata no relatório `solve`): a correção de 8,8 cm da morte era
-  no meio do tombo (f19), a da vitória em f35/f52 — não na pose segurada.
-- **Cauda que VARRE o chão levanta o lobo inteiro**: atravessando a linha do meio a ponta toca o piso, o `body_floor`
-  ergue o corpo 3,8–5,2 cm e as patas da frente (já no alcance máximo sentado) saem 15–21 cm do chão. Varra de UM lado
-  (yaw 14 → 28 → 12): elevação 0. E o sentado não inclina mais do que as patas da frente alcançam (21°; 25–32° as
-  levantou 9–21 cm) — a altura do uivo vem do pescoço e da cabeça (77–79 px; meta 85 não alcançada, declarado).
-- **O passo SOBE antes de viajar**: z da pata adianta y em um quadro. Com o `out` no mesmo quadro da subida, a sonda de
-  deslize da engine (bola da pata abaixo de 7,5 cm) contou os primeiros 5 cm do passo como patinação.
-- **Peso do pouso é FERRAMENTA, não chave: `gait.land`** `{"F": [queda, a, b], "R": [...], "pitch_F", "pitch_R", "head"}`
-  — por pata, depois do toque: queda rápida (seno em `a` quadros) e rebote (cosseno em `b`), focinho para baixo no toque
-  da frente, a trava da cabeça cede na queda. Quatro toques = quatro batidas (o bob em cosseno era "uma onda, nada
-  pousa"). Meio-galope: frente 2,5 cm / 1,5 + 3,5 f, trás 1,2 cm; galope: frente 3 cm / 1 + 2,5 f.
-- **`surge` é de graça se estiver EM FASE com o empurrão**: 0,065 m na fase 0,42 esticou a perna de trás 4,55 %; na fase
-  0,3 (corpo mais à frente no toque da frente) 1,34 %, patinação 0. Varra a fase antes de reduzir a amplitude.
-- **O bote termina NA mordida**: `dash_bite` = one-shot cujo quadro 1 É o último quadro do dash (lido do
-  `sprint.clip.json` pelo `make_clips.py`): o embalo leva o corpo 14 cm, as patas da frente derrapam (planejado), a
-  mordida crava no f3 (`hit`), sacode, morde de novo (`hit2` f17). Dash → pousar → encolher → morder era blocker de
-  princípios.
-- **Vento para a câmera de CIMA** (`fx.wind` nos landmarks): crescentes deitados (`arc_rolls` dentro de ±35°; 55–90°
-  ficavam de pé = palitos vistos de cima), raio 0,65, ápice 14 cm à frente do focinho (`arc_lead`), núcleo fino e quente
-  (`arc_core` 0,045); riscos ≥ 5 cm de largura (2 px) e ≥ 0,5 m, nascendo atrás dos ombros e FORA da silhueta; o
-  meio-galope não tem vento; o dash apaga no último quadro e o `dash_bite` leva o decaimento.
-- **Trocar a pose-base = camada ADITIVA, não reescrever chaves** (UIVO r4, agachado de caça da referência): `"layers"` no
-  clip.json (cada conjunto de chaves é somado por cima de `keys`). O `make_clips.py` guarda a pose antiga como referencial
-  de autoria (`HOME_R3`) e a camada 0 de cada clipe = (pose nova − antiga) × peso por grupo (`body` / `head` / `tail` / cada
-  pata, ou um canal só): 1 nos one-shots que saem e voltam à pose, some quando o corpo sai dela (morte, vitória), entra na
-  recuperação (`dash_bite`). A parte de uma pata PLANTADA só muda com ela no ar ou num deslize planejado (mantida até o
-  tombo, a morte precisou erguer o corpo 17 cm). Pose mais baixa = menos espaço para o agachamento do golpe: peso 0,45–0,5
-  em `torso_z` / `torso_pitch` durante a ação (peito −3,9 cm e antebraço −1,7 cm no chão com o deslocamento inteiro).
-  Cabeça só para BAIXO some na juba: pescoço para a frente e para baixo (−28) com a cabeça erguida (+21).
+- **A foot that turns on the floor turns on the ball**: `rot yaw` in `foot_ik` turns at the ANKLE. Add `loc side/fwd` =
+  `v − R(yaw)·v` (v = ankle → ball) and, if the heel rises, `pitch` + `loc up` = lever × sin(pitch). Check it with the
+  heel × toe travel (the `slip` of `motion_table.py` does not see a turn in place).
+- **Step back**: the torso shifts onto the other foot (`torso fwd/side` keys) 2–5 frames BEFORE the foot leaves; the foot
+  rises ≥ 5 cm.
+- **Side guard + falling on the back**: the guard's yaw becomes roll on the floor. Measure the height of both shoulders
+  on the last frame and adjust `chest roll` until they match; then check `ground_table.py` (back, chest, head, hands).
+- **The hand that released the weapon**: `weapon.hand_floor` = the real thickness of the fist; `finger_floor` /
+  `finger_radius` keep the fingers out of the floor. A prop resting on the body: lower it until the gate says "touches"
+  with 3–5 mm.
+- **Loop with `drag`**: the spring already runs over the period; if `last vs first` goes past 1 mm, it is a key, not the
+  spring.
+- Read the WHOLE output of `contacts.sh` (the penetration lines come first).
 
-## 8. Mostrar
+## 7b. QUADRUPED: generated gait, keys on top, solvers (UIVO)
 
-`blender/reel.py` monta idle → andar ×3 → dano → ataque → morte; `blender/play.py --arg name=<NAME>
---arg action=<NAME>_reel --arg 'view=[52,9]' --arg mode=play` deixa tocando para a filmagem.
+- `./quad_build.sh <id> <NAME> <clip>...` = `blender/quad_clip.py` (gait + keys + springs + solvers, measured) +
+  `fx.py` with the clip's `fx` block. Rebuilding throws the action away: the effects are ALWAYS re-keyed along with it.
+  The `quad_clip.py` header = the contract (parameters in degrees/meters: `torso_*`, `hips/chest/neck/head_*`,
+  `head_level`, `jaw`, `ear*`, `tail1..4_*`, `scap_*`, `paw_<FL|FR|RL|RR>_x/y/z/curl`, `follow_<pata>` (`<pata>` = paw);
+  `torso_pivot`; `solve`).
+- Loop with `gait`: touchdown / duty / lift / curl / toeoff / reach / scap / bob / pitch / flex / surge / roll / yaw /
+  head_level / tail / ears / jaw per phase. The planted paw moves +S/2 → −S/2 (S = v × duty × T): zero sliding by
+  construction. Gallop (UIVO 14 f, 4.4 m/s) and canter (25 f, 2.18 m/s) are already calibrated in
+  `characters/uivo/anim/`.
+- One-shot: keys only (generated by the character's `make_clips.py` from the idle's base pose — every clip starts in
+  it). `follow_<pata>` = the paw goes with the body (death on its side, rearing); `head_level` = the hunter's head stays
+  stable.
+- Solvers (the `solve` report): `paw_floor` (a skin pad below the floor → raises the target), `reach` (a gap in the
+  chain, a toe that does not reach AND the DEF bone that STRETCHES — Rigify hides the lack of reach by stretching the shin:
+  3.6 % → skin 0.69 cm off in the FBX; a planted gait paw is not pulled, that would become sliding), `body_floor` (death,
+  sitting: the floor is the target). If `body_floor` needs to lift a lot, the pose is wrong (the sitting howl rose 7.4 cm
+  and the front paws floated 6 cm).
+- Gate: `reach` ≤ 0.05 cm, `stretch %` ≤ 2.5, `floor` ≥ −0.5 cm, `slip` 0 (except for authored sliding, e.g. the hit),
+  and LOOK from the side and at 3/4 (`strip`) — the metric does not see "looks like a begging dog".
+- Seedance reference (§7) on a quadruped: the user's timing rules, the video gives the SHAPE. Run `refcheck.sh` on all
+  clips with a `reference` block; on UIVO it changed two: attack (crouch LOW and stretch into a long pounce) and victory
+  (a SITTING howl).
+- **`end` of every one-shot** (`home` default / `hold` / `chain`): with `home` the springs settle in the last `settle`
+  frames (8) and the last frame IS the base pose; whatever displaces a paw (the hit's push) must COME BACK in a step
+  (rises, travels in the air, lands vertically) — "the next transition takes it home" made the export mark the hit as
+  HOLD and Unity froze the wolf. Death and victory: `"end": "hold"`; the dash that ends at the target: `"end": "chain"`.
+- **Default interpolation = spline** (monotonic Hermite, Fritsch–Carlson): the old smoothstep STOPPED every channel at
+  every key — 60+ channels stopping together is the "robotic" feel the user saw in every clip. An explicit ease (`in` /
+  `out` / `lin` / `hold`) still applies where a stop is wanted; loop: the tangents wrap around the seam. Gaits get
+  springs too (`GAIT_SPRINGS` in UIVO's `make_clips.py`: head from the torso's sway, ear tips, tail 2–4).
+- **A hunter's idle looks around in saccades** (turns in 3 frames with `out`, holds, turns) — a slow sine on the head
+  reads as a turret.
+- **Death with beats** (UIVO r2, 60 f): impact (yelp) → staggers (one paw STEPS OUT to the side) → the hind legs give
+  way → the front folds → rolls onto its side with `in` → bounces → settles → limbs driven by springs from the roll →
+  last breath → kick and claw. `follow_*` comes in during the fall. `body_floor` recomputes the NEEDED elevation on
+  every pass (adding the passes up floated it 6.5–13 cm).
+- **A quadruped's death = ON ITS SIDE, rolled PAST 90°** (UIVO r3, 52 f; r2's belly-down death read as "crouching,
+  alive" to all three critics, and the chest-down one with the paws spread read as "about to pounce"). The WIDEST part
+  decides how it lies: at 86° the mane props up the front (hips 19 cm, head 10 cm in the air). Roll to ~111°: the rear
+  flank drops before the mane and the upper paws fall over the belly. Two rules of `quad_clip`'s
+  `Rz(yaw) Ry(roll) Rx(pitch)` order: torso pitch on a rolled body tilts the long axis in the world by
+  `sen(p)·cos(roll)` (p −22 at 111° = rear 7.7° lower), and past ~90° the relative YAW of hips / neck / head turns
+  toward the floor (yaw + = to his left = down). Result: head on the floor (neck 1.5 cm), elevation 14.4 → 7.5 cm. The
+  pivot paws hold `follow` 0 → 0.15 until the body passes over them. The HEIGHT in the game camera barely changes
+  (67 × 118 px lying × 71 × 129 standing): from 55° above, the depth of a lying body projects like a standing one —
+  judge the SHAPE (paws out, belly up), not the px.
+- **Read `paw_fix_at`** (the frame of each paw's largest correction in the `solve` report): the death's 8.8 cm
+  correction was in the middle of the topple (f19), the victory's at f35/f52 — not in the held pose.
+- **A tail that SWEEPS the floor lifts the whole wolf**: crossing the midline the tip touches the floor, `body_floor`
+  raises the body 3.8–5.2 cm and the front paws (already at maximum reach while sitting) leave the floor by 15–21 cm.
+  Sweep to ONE side (yaw 14 → 28 → 12): elevation 0. And the sitting pose does not lean further than the front paws can
+  reach (21°; 25–32° lifted them 9–21 cm) — the howl's height comes from the neck and the head (77–79 px; the target of
+  85 was not reached, declared).
+- **The step RISES before it travels**: the paw's z leads its y by one frame. With the `out` on the same frame as the
+  lift, the engine's slide probe (paw ball below 7.5 cm) counted the first 5 cm of the step as sliding.
+- **Landing weight is a TOOL, not a key: `gait.land`** `{"F": [queda, a, b], "R": [...], "pitch_F", "pitch_R", "head"}`
+  — per paw, after touchdown: a fast drop (`queda`; a sine over `a` frames) and a rebound (a cosine over `b`), muzzle down
+  on the front touchdown, the head lock gives way in the drop. Four touchdowns = four beats (the cosine bob was "one
+  wave, nothing lands"). Canter: front 2.5 cm / 1.5 + 3.5 f, rear 1.2 cm; gallop: front 3 cm / 1 + 2.5 f.
+- **`surge` is free if it is IN PHASE with the push**: 0.065 m at phase 0.42 stretched the hind leg 4.55 %; at phase
+  0.3 (body further forward at the front touchdown) 1.34 %, zero sliding. Sweep the phase before reducing the amplitude.
+- **The pounce ends ON the bite**: `dash_bite` = a one-shot whose frame 1 IS the last frame of the dash (read from
+  `sprint.clip.json` by `make_clips.py`): the momentum carries the body 14 cm, the front paws skid (planned), the
+  bite sinks in on f3 (`hit`), shakes, bites again (`hit2` f17). Dash → land → crouch → bite was a principles
+  blocker.
+- **Wind for the camera from ABOVE** (`fx.wind` in the landmarks): crescents lying flat (`arc_rolls` within ±35°;
+  55–90° stood upright = sticks seen from above), radius 0.65, apex 14 cm in front of the muzzle (`arc_lead`), a thin,
+  hot core (`arc_core` 0.045); streaks ≥ 5 cm wide (2 px) and ≥ 0.5 m long, born behind the shoulders and OUTSIDE the
+  silhouette; the canter has no wind; the dash goes out on the last frame and `dash_bite` carries the decay.
+- **Changing the base pose = an ADDITIVE layer, not rewriting keys** (UIVO r4, the reference's hunting crouch):
+  `"layers"` in the clip.json (each set of keys is added on top of `keys`). `make_clips.py` keeps the old pose as an
+  authoring reference (`HOME_R3`) and layer 0 of each clip = (new pose − old) × a weight per group (`body` / `head` /
+  `tail` / each paw, or a single channel): 1 on the one-shots that leave and return to the pose, fading out when the
+  body leaves it (death, victory), coming in during the recovery (`dash_bite`). The part of a PLANTED paw only changes
+  while it is in the air or in a planned slide (kept through the topple, the death needed to lift the body 17 cm). A
+  lower pose = less room for the strike's crouch: weight 0.45–0.5 on `torso_z` / `torso_pitch` during the action
+  (chest −3.9 cm and forearm −1.7 cm into the floor with the full offset). A head that only goes DOWN disappears into
+  the mane: neck forward and down (−28) with the head raised (+21).
+
+## 8. Show
+
+`blender/reel.py` assembles idle → walk ×3 → hit → attack → death; `blender/play.py --arg name=<NAME>
+--arg action=<NAME>_reel --arg 'view=[52,9]' --arg mode=play` leaves it playing for filming.

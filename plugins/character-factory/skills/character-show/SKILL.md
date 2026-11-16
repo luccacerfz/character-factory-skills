@@ -158,6 +158,16 @@ Transform + `CFTraining`). Import the unit and the target BEFORE the host.
 - Play advanced without focus on this machine; if `Time.frameCount` does not move, `Application.runInBackground`.
   `execute_code` compiles C# 6.
 
+- **A HEALER's round without new code** (the healer × TOCO, `<HOST>_Training.unity`): after `BuildTraining`, by
+  `execute_code` — `summonClip = "heal"` (the clip the scene plays where a summoner would summon: the heal comes
+  FIRST), `casts = {"attack", "attack", "heal"}` with `castPeaks` / `castSquash` / `castDamage` 0 on the heal, an ALLY
+  (another character's prefab, standing) on the heal's baked target — local `(−left, 0, forward)` = `(−1.0, 0, 1.5)` —
+  facing the dummy, and the camera behind the RIGHT shoulder (with the default, behind the left, the ally hides the
+  dummy). A slow walker: `stopLead` 0.02 (with 0.18 a 0.25 m/s walk stopped 17 cm short of the spot) and a short patrol
+  (`{(0, −0.9), (0, 0)}`). Probe, 25 s: heal at 3.8 s, coals at 7.0 / 9.2 / 13.6 / 15.9 s, the dummy dies at 15.9 and
+  is back at 18.7; support foot 0.0 mean / 0.18 cm per 1/30 s at the peak. Limits: the ally is scenery (nobody reads
+  its health), the heal's `land` still calls `target.Hit` with zeros, and the baked flights are not re-aimed.
+
 ## 8. Gates before showing it to the user
 
 | What | Number | Where |

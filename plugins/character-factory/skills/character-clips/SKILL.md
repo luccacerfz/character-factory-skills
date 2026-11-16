@@ -437,6 +437,40 @@ below. Numbers and attempts: `docs/TECHNIQUES.md` (CENTELHA sections r4–r15).
 - A clip that starts with the staff planted: LIFT the spike before moving the hand (the victory dragged the spike
   11.5 cm over f2-11; with the wrist rising over f7-12, 0.3 cm).
 
+## 2i. A planted-staff healer on a short-armed body: carry, re-arm, heal on the ally (the healer v2)
+
+- **`cf/port_clip.py` only scales the TWO-hand keys.** For a one-hand weapon run
+  `python3 cf/rearm_clip.py <src_id> <dst_id> [clip ...]` after it: each key becomes `S_dst + (old − S_src) × K` (K =
+  arm ratio, S = that hand's shoulder in the key's space) — `weapon.wrist`, `off.wrist`, `off.release.wrist`;
+  `weapon.foot` moves by what the "ready" wrist moved. Angles, eases and `"ready"` stay. It prints the re-scaled carry
+  wrist for the landmarks.
+- **The carry is STAMPED on the rig** (`rig["cf_onehand"]`, written by `rig_bind.py`): editing `landmarks.onehand` and
+  rebuilding the clip changes nothing (the same report twice). `bl.py run blender/carry_sync.py --arg name=<NAME>
+  --arg landmarks=<json>` copies it without rebuilding the rig; then hub → `restpose.py` → the clips.
+- **Which way the weapon faces in the fist is decided at IMPORT** (`prop_blade.py`: `face_flip`, `grip_span`); the
+  solver's `edge` key is a soft cost and does not roll the fist 180°. With the staff's hook to his LEFT the censer hung
+  in front of the face (head × censer 81 mm) → `face_flip=true`, then `gameready.py` on the prop, and MIRROR what lives
+  next to the parked prop: the censer's box and `own_bone_rest`, the effects' `at` anchors.
+- **Short arm (0.23 m)**: lower the grip on the shaft (`grip_span [0.30, 0.40]` → pommel at 0.61 m) and the carry wrist
+  (z 0.565) until the staff's foot sits +0.7 to +5 mm above the floor (it was 36 mm under, with the bracer in the collar).
+- **Walking with a planted staff**: generate the `weapon.foot` keys from the staff's foot in the hub ± half of what the
+  unit walks in the stance frames (speed × frames), and the aim = base lean + atan(foot offset ÷ grip height). The
+  ported keys asked for extension 1.297 and `foot_off_mm` 74.7 → 0.995 and 0.
+- **Free hand**: the old keys × the arm ratio put the wrist inside the belly / the belt → re-key inside the real reach
+  (0.22 m from the shoulder), the carry arm open ~49°.
+- **Hit**: staff leans at 60 % (wrist 70° of flexion / 44° of deviation with the full keys).
+- **Death**: the first two frames = the hub's wrist in CHEST space (else frame 1 jumps 69 mm); petals rigid in the
+  fall — `"secondary": {"chains": {...}}` with `amount 0` on the `tabard_*`. A `chains` in the clip REPLACES the whole
+  dict: list every chain. Without it the skirt's LOD1 went 9.1 cm into the floor in Unity.
+- **Heal first, attack after**: `heal` = `mend` (a bolt with `"bone": "DEF-hand.L"`, `charge` 6 → `fire` 22, a low arc
+  of 5 frames to the ally at `[1.0 left, 1.5 forward, 0.6]`) + `bless` (an aura with `anchor` on the ally: a ring on
+  the ground, a shell of light and rising "+" signs, `level` keyed from the landing frame) + the censer's flame that
+  breathes (`ember.level`) + puffs (`smoke.bursts`). `attack` = `coal` (a bolt that leaves the censer's bone) at the
+  enemy. The heal reads at 64 px by the "+" and the ring, not by the hand.
+- **The flame's flare**: `ember.level` 3.0 at the release gave ~1 m of flame (it left the frame in Unity's side
+  camera); 2.4 ≈ 0.75 m. Judge the flare's size in the engine, from the side, not only on the Blender sheet.
+- **Censer = a pendulum**: its own bone (`own_bone_rest`) + the chain `DEF-censer [30, 1.3, 0.6, 40, 1]`.
+
 ## 3. The five clips
 
 | Clip | `kind` | How it is born | What to check |

@@ -82,6 +82,12 @@ Or copy `plugins/character-factory/skills/*` into your project's `.claude/skills
 - **Rigging a Canvas model without touching the artist's open scene:** a second Blender on its own bridge port, hidden
   leg chains under a floor-length skirt, a hanging prop on a bone whose pivot is the hook it hangs from, and why a
   "dark" colour class pinned a chin crease to the chest — `character-rig` §4g.
+- **Body in underwear, clothes as separate objects:** the house rule after a fused floor-length skirt could not move
+  on its own — one image → HD → retopology chain per garment, dressed and skinned on the body's rig by one stage
+  (box or ring fit, weights transferred and folded, spring chains for the loose cloth), shipped as worn props with
+  their own LOD1; plus a painted-miniature shader in Unity driven by the manifest, and a healer's training round
+  (heal the ally first, then attack the dummy). See `character-design` §3d, `character-rig` §4h,
+  `character-clips` §2i, `character-engine` §2j.
 - **The paint pass as code:** the three scripts behind `character-design` §3c (bake the sculpt's occlusion / curvature
   onto the game UV, paint the light into the albedo, A/B it under a fixed rig) ship in
   `plugins/character-factory/skills/character-design/scripts/`.

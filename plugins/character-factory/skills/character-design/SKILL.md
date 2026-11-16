@@ -381,10 +381,44 @@ and `cf/` (the paths the commands above use); from a checkout of this plugin, po
   the rest pose. A censer on a pendulum (±30°) survives it; a weapon that passes over the head carries its light
   upside down in the middle of the swing. For those paint only occlusion + cavity + edge:
   `key_lo=0.9 key_hi=0.9 grad=0`.
-- **Where the pass stops today**: proven in a render A/B on two characters (scratch copies). The `basecolor_painted.png` has NOT yet
-  gone through `export.py` → `to_unity.py` → Unity, and the `mini` shader exists only in `paint_look.py` (in Unity the
-  body uses Standard — `character-engine` §2i). Before calling a character "painted", run that trip and judge it in
-  the arena.
+- **Where the pass stops today**: proven in a render A/B on two characters (scratch copies). The `mini` shader now EXISTS in
+  Unity (`CharacterFactory/Mini`, `character-engine` §2j) and was proven on the healer v2 with the generator's albedo; the
+  `basecolor_painted.png` has NOT yet gone through `export.py` → `to_unity.py` → Unity. Before calling a character
+  "painted", run that trip and judge it in the arena.
+
+## 3d. Body in UNDERWEAR + separate garments, in the mini language (house rule, 2026-11-16 — the healer, v2)
+
+House rule: **the body is generated in underwear ONLY and every piece of clothing is its own object**; they are put
+together in Blender with rig, weights and springs (`character-rig` §4h). The healer's v1 had a floor-length skirt
+fused to the body with no legs under it: the cloth could not move on its own, the rig needed hidden legs and colour
+classes to split skin from cloth, and the outfit could not be changed.
+
+- **One chain per piece in the Canvas**: image (GPT Image 2.5, with the body concept as the style reference) →
+  HD Model (4k, never 8K; texture + remove lighting + PBR) → Retopology (Bake + Smart Low Poly v2 + Smart UV).
+  Budgets used: body 20,000 tris (2,000,000 HD), skirt + belt 6,000 (500,000), collar 3,000 (400,000), bracer 1,500
+  (300,000). Cost: 55 + 35 = 90 credits per piece → 360 for the character (4 pieces).
+- **A paired piece = ONE generation**: the bracer was generated once and mirrored in Blender (`"mirror": "x"`).
+- **Garment prompt** (what worked): start by denying the rest — "ONLY an accessory, NO character, NO neck, NO
+  mannequin" —, state the shape as a loose object ("one closed round loop lying open", "a short wide open cuff, a thick
+  tube, wider than long"), COUNT the parts (eleven beads, three fangs, four studs) and close with the mini language:
+  "Chunky vinyl toy style: smooth clean sculpted surfaces of broad planes, flat saturated colour blocks, NO grain, NO
+  scratches, NO stitches. Flat even lighting, no cast shadow, centered, whole object in frame with margin."
+- **Mini language on the body**: chunky forms, flat saturated colour blocks, no wrinkles, no pores, no grain. A
+  reference from the artist is LANGUAGE only; the design is original.
+- **Design the garment so it fits the animation** (all measured on the healer, v2):
+  - skirt hem ABOVE the insteps (z 0.14 on a 1.30 m mini). With the petals over the feet every step put a toe 6–8 cm
+    through a petal and every bent knee put the hem 3–8 cm under the floor;
+  - a short bracer: a 29 cm one next to a collar that sits on the shoulders cross 30–42 mm in gestures;
+  - wide skirt + short arm: a 0.23 m arm cannot plant the staff outside a 0.44 m hem without a 20° lean — shaft × skirt
+    28–67 mm stayed as a declared limit. Either the skirt narrows on the weapon side or the arm grows;
+  - a thick wall: belt and cuff need thickness so the body's skin lies INSIDE the wall (nothing shows through).
+- **Colour drifts in 3D**: the petals came out light yellow and the belt bright red (the brief asked for ochre / rust).
+  Fixing it is the paint pass's job (§3c) — or accept the toy colour; that is the artist's call.
+- **Canvas operation (second round)**: the Agent RAN an HD Model node it was told only to create ("do NOT run it") —
+  create nodes from the node bar and open the panel before "Generate"; the view jumps and re-zooms between screenshots —
+  click by element reference and zoom-verify the model row (GPT Image 2.5) before every "Generate"; the download lands
+  in the browser's folder — move it at once into `model/v2/` and type the name in the dialog (else it arrives as
+  `tripo_convert_<id>.glb`).
 
 ## 4. After the GLB
 

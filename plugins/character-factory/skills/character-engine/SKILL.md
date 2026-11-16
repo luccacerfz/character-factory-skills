@@ -426,15 +426,42 @@ A study of Tripo + the user's reference (a collectible mini on a card screen). T
   reference asks for three things Standard does not give by itself: paint that does not fall to black in the shadow
   (part of the colour unlit), wrapped light and a cool rim on the silhouette. `blender/paint_look.py` has that shader
   as a rehearsal (`mini`: 60 % unlit albedo + 40 % lit + a rim from the GEOMETRY normal — through the normal map the
-  rim scratches white lines on the inner edges). **In Unity it does NOT exist yet**: the candidate is a
-  `CharacterFactory/Mini` (Built-in, 1 pass, no extra texture cost) switched on in `CFImporter` by an option in the
-  manifest. Until then the gain comes from the painted albedo (`cf/tex_paint.py`), which works with Standard — in the
-  brute's A/B (the `lit` render of `paint_look.py`, a Principled that imitates Standard) the painted one already reads
-  better than the original: face, cracks and muscles.
+  rim scratches white lines on the inner edges). **In Unity it exists since the healer v2**: `CharacterFactory/Mini`,
+  switched on per material in the manifest (§2j). The painted albedo (`cf/tex_paint.py`) still pays off with Standard —
+  in the brute's A/B (the `lit` render of `paint_look.py`, a Principled that imitates Standard) the painted one already
+  reads better than the original: face, cracks and muscles.
 - The painted albedo goes in the usual way (the body material's image in the .blend → `export.py` → `to_unity.py`
   writes `<Mat>_basecolor.png`). That trip with the painted albedo has not been run yet: check the character in the
   arena (the lab, G + V) after it, because the painted light ADDS to the scene light — if the body gets too dark
   under Standard, lower `ao_broad` / `key_lo` in `tex_paint.py` instead of raising the scene light.
+
+## 2j. The mini look IN Unity, garments as worn props and Unity without a session tool (the healer v2)
+
+- **`CharacterFactory/Mini`** (`Assets/CharacterFactory/Shaders/CFMini.shader`, Built-in, one pass + shadow, no extra
+  texture): `_Paint` of the albedo drawn UNLIT (the colour never goes down to black), a wrapped lambert (`_Wrap`), the
+  shadow lifted with a cool tint (`_ShadowTint` / `_ShadowLift`), a cool rim from the GEOMETRY normal (`viewDir.z` in
+  tangent space; `_RimUp` fades the rim underneath), normal map × 0.6, a small highlight from the smoothness map. An
+  added light only ADDS (the ForwardAdd pass is scissored to the light's rectangle: a fill there draws a pale square).
+  Property names match Standard's — the importer fills the same maps.
+- **Path**: `bl.py run blender/look.py --arg name=<NAME> --arg look=mini [--arg paint=0.5 --arg rim=0.32]` writes the
+  `cf_look` tag on the painted materials (effects are skipped) → `export.py` → manifest `materials[].look` →
+  `cf/to_unity.py` → `CFImporter.BuildMaterial`. `look=off` goes back to Standard.
+- **Tune in the engine scene, record in Blender**: the defaults (paint 0.6 / rim 0.55) washed a pale grey skin — a white
+  outline and flat volume; 0.5 / 0.32 hold the form. Change the materials by `execute_code`, capture, and ONLY THEN
+  pass the numbers to `look.py` and re-export: the next `Import` rewrites the material.
+- **Garments** (`character-rig` §4h) arrive as worn props: one skinned mesh per piece + a LOD1 of each. The floor gate
+  reads EVERY renderer, LOD1 included — the skirt's LOD1 went 9.1 cm into the floor in the death with the body clean.
+- **The manifest on the Unity side**: `Assets/Characters/<NAME>/<NAME>.cf.json`.
+- **`python3 cf/unity.py`** when the session's Unity MCP tool does not connect (ECONNREFUSED) but the editor is open
+  with the server: `read mcpforunity://editor/state` · `code '<C# 6>'` (or `code @file.cs`) · `call refresh_unity
+  '{"mode":"force","scope":"assets","compile":"none","wait_for_ready":true}'`. It is a minimal MCP streamable-HTTP
+  client: initialize, then one call.
+- **Another session's editor**: read the state first (in Play → do not import). If a scene of other work is open and
+  clean, note its path, do yours (BuildTraining opens your scene), and REOPEN the previous scene at the end; never
+  save someone else's scene.
+- **Capture in edit mode**: `cam.targetTexture = RenderTexture 1280×720` → `cam.Render()` → `ReadPixels` →
+  `cam.ResetAspect()`; for a close-up, change the camera's position / FOV, capture and put it back. Sampling a clip
+  without Play: `clip.SampleAnimation(object, t)` (it dirties the scene — do not save).
 
 ## 3. What the engine doesn't fix
 

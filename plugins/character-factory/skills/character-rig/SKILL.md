@@ -293,6 +293,47 @@ island). Clean in its own poses on the second assembly.
   run it), the carry pose (`onehand` is a guess), springs, `contact_probe` / `skin_fold`, and the painted texture
   (skill `character-design` §3c) is not on the scene's materials yet.
 
+## 4h. Separate garments dressed on the body: `garment.py` (the healer v2, 2026-11-16)
+
+House rule: body in underwear + every garment its own object (`character-design` §3d). Stage 5e of `rebuild_rig.sh`
+runs `blender/garment.py` for each item of `landmarks.garments[]`, AFTER the body's weights and the props. Idempotent:
+the piece is rebuilt from the GLB on every rebuild.
+
+- **Fit `fit.box`**: the piece's bounding box is STRETCHED per axis onto a box in rest-pose metres. Size it so the skin
+  lies INSIDE the piece's wall (belt: a waist of rx 0.255 / ry 0.236 inside a stretched belt of inner radius 0.235).
+  `clear` (3–4 mm) pushes out, along the skin's normal, every vertex that ended up inside it.
+- **Fit `fit.ring`** (bead collar, a closed loop): the loop is re-laid on an ellipse (`rx`, `ry`) on the plane through
+  `z_front` and `z_back`; with `drape` every stretch the plane would bury is LIFTED until a ball of the bead's radius
+  rests on the skin (the sides climb onto the shoulders); `cross` scales the section, and each bead TURNS with the line
+  (it is not sheared).
+- **Skin**: `{"bone": ...}` = rigid (collar on the chest, bracer on the forearm); or `transfer` (weights copied from the
+  body's skin, closest point) with:
+  - `keep` — only bones with these prefixes survive (`DEF-spine`, `DEF-thigh`);
+  - `fold` — shin / foot / toe fold into the thigh FIRST (a hem is closest to the ANKLE and would follow the foot);
+  - `toward` — every vertex gives 0.45 to the pelvis: a skirt hangs from the belt, the legs push it, they do not carry it;
+  - `bands` — the belt is rigid above `z_rigid`, with a ramp down to `z_soft`;
+  - `chains` — the springs of the loose cloth: a sector about an azimuth (−90 = front), from nothing at z0 to the
+    maximum at z1, and below `split` the weight passes to the next bone (two 2-bone chains, front and back = 4 bones);
+  - `smooth` — smoothing passes over the piece's own edges.
+- **The piece travels as a worn prop**: it enters `rig["cf_props"]` (a json STRING) and `rig["cf_garments"]`; the
+  export takes each one as a skinned mesh with its own LOD1. The LOD1 budget is shared between the pieces — the first
+  try gave 15,974 of 10,000; with `{"body": 4600, "skirt": 1500, "collar": 900, "bracer_l": 340, "bracer_r": 340,
+  "staff": 1400, "censer": 920}` it closed at 9,994 (shape ≤ 1.3 px at 160 px).
+- **An underwear body simplifies the rig**: real legs (no hidden legs under a skirt, §4g) and `hands.split: false`
+  (bare wrist — the bracer is an object, `split_plates` cuts nothing). 48 deform bones.
+- **Hem above the insteps** (z 0.14, was 0.06): floor and feet clean in every clip; chain joints, ramps and bands
+  rescaled with the box.
+- **Stiff petals = a spring without gravity**: `secondary.chains` `tabard_f.01 [90, 8, 0, 12, 1]`, `.02 [70, 6.5, 0,
+  16, 1]` (with the default gravity they hung 29° / 22° at rest). The floor rule of `secondary.py` keeps the tip at
+  `floor_clearance + 0.07`: a hem that is too low becomes 15.8° of swing while standing still.
+- **Part names in the contact probe follow the bone group across ALL meshes**: "thigh.R × staff" may be the SKIRT's hip
+  (weighted to the thigh), not leg skin. Read the mesh before touching the pose.
+- **To render a pose**: hide the effects (`hide_viewport` on the `<NAME>_bless/coal/ember/...` meshes — the aura's
+  dome covers the sheet) and show them again before clips and export. `pose_test.py` does not run alone after
+  `restpose` (arms in FK): run `rebuild_rig.sh`.
+- Open on v2: pose test with E 8/5, F 12/10, G 11/9 edges over 2.2× / > 15 mm (the close-ups show no tear; cause not
+  isolated).
+
 ## 5. Look and measure — only then say it is clean
 
 1. `pose_test.py` (independent of the bind pose) and its shoulder close-ups. The eye sees LENGTH: read

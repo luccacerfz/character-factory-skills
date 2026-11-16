@@ -132,7 +132,8 @@ Generating on Tripo with GPT Image 2.5 is the user's decision (the Runware gener
    POSE in caps (T-pose, palms down, empty hands), "no weapon, nothing on the back", white background, even
    lighting, frontal camera with no perspective. To keep the house style, attach the `refs/tpose_front.png` of an
    approved character as reference and write "same art style … but a COMPLETELY DIFFERENT character".
-   Aspect ratio 4:3 (a T-pose is wide), 2 images (8 credits).
+   Aspect ratio 4:3 (a T-pose is wide), 2 images (8 credits). In the Agentic Canvas the node opens on GPT Image 2 and
+   2.5 is hidden at the end of the list — §3b-2.
 2. Check the image before spending on 3D: a real T-pose, hands empty and open, asymmetric marker on the correct
    side (HIS LEFT side is on the viewer's RIGHT), arm/head within the rules (measure in pixels).
 3. **Views**: the image's "Generate multiview" button (cube icon on hover) sometimes returns oblique views
@@ -178,7 +179,8 @@ Generating on Tripo with GPT Image 2.5 is the user's decision (the Runware gener
    `lower_jaw` / `upper_muzzle` / `throat` in `characters/uivo/rig/landmarks.json`).
 7. **Each prop is a separate generation**: isolated image (whole object, vertical, white background, with the character
    concept as style reference) → single-image "Generate 3D" → GLB at `model/<id>_<prop>_hi.glb`. Measure the handle in
-   the image (width ÷ length) before generating.
+   the image (width ÷ length) before generating. In the Canvas the prop's whole line (image → HD → retopology with
+   bake) costs 90 credits and already ends in the game mesh — §3b-2.
 
 Generations consume credits from the user's account: generate 2 options, pick one, and do not repeat without a reason.
 Log in `state.json` what was generated and what was discarded.
@@ -279,9 +281,56 @@ passes the gates and the 5 measured clips.
 Measured cost of the healer's body in the Canvas: HD 65 + retopology 35 + texture 20 (+20 redone) + PBR 5 + rig 20 +
 animation 20 = 185 credits.
 
-Not verified in this round (do not treat as a rule): whether the Multi-view tab of the texture node really uses the 4
-views (the Agent only ever built it with 1 image); what comes inside the rigged/animated GLB (bone names, fps) —
-nothing was exported yet; direct Smart Mesh P2.0 on a body.
+### 3b-2. Second round in the Canvas: props, export and the Agent as a manual (2026-11-16)
+
+- **GPT Image 2.5 is HIDDEN.** The "Generate image" node opens on **GPT Image 2** and the model list shows 5 rows
+  (Nano Banana, Nano Banana Pro, Nano Banana 2, Midjourney, GPT Image 2); **GPT Image 2.5 is the 6th**, below the fold —
+  scroll INSIDE the list. The choice is per node: check the model row on EVERY new node before generating (user rule:
+  "always use gpt image 2.5"). The healer's 5 concept images came out of GPT Image 2 through exactly this slip. Same
+  censer prompt on both: 2.5 obeyed the counts (3 links, 5 holes) and the framing; 2, asked for 2 images, returned one
+  of them with the censer glued on top of the character from the style reference.
+- **The toolbar of a selected node creates a new node ALREADY CONNECTED, without running it.** Image node: Generate
+  image · Element extraction · Image split · Multi-view · HD Model · Smart topology mesh · Export. Model node: texture ·
+  retopology · PBR · (rig) · Export. Open the panel of the node it made, check it, and only then "Generate".
+- **HD Model from one image** opens with Texture, Remove lighting and PBR ON, 4k, triangles, 2,000,000 — **55 credits
+  whatever the polygon count**. For a prop ask for 500,000: the exported HD drops from ~60 MB to ~15 MB and the bake
+  of §3c reads it faster.
+- **A prop in the Canvas = 90 credits and ~6 min**: isolated image (2.5, the concept as style reference, "ONLY the
+  staff: no character, no hand") → HD Model (55) → Retopology with Bake + Smart Low Poly v2 + Smart UV (35). Asked vs
+  returned: staff 6,000 → 5,667 triangles; censer 4,000 → 3,901. The GLB carries a 4096 base colour (JPEG) + 2048
+  normal and metal/roughness, height normalised to ~0.98 (the real scale is `attach_prop.py`'s job).
+- **Export** (node toolbar → dialog: name, format, texture resolution): the resolution tagged "Current" is the native
+  one and keeps the name you typed; any other goes through a server-side conversion ("Exporting · about N s") and the
+  file arrives as **`tripo_convert_<id>.glb`** — the typed name is ignored, identify it by its timestamp. The dialog
+  remembers the last resolution used: check it. An HD that is only a bake source: export it with 1k textures (body
+  59 MB, prop 15 MB). Sometimes the click seems to have done nothing: look in the download folder before clicking
+  again (I downloaded one file twice). Export on an IMAGE node shows "Added to the export list" and downloads
+  `multiview_<n>_<id>.jpeg` (1024 px).
+- **The Agent as a manual (asking costs 0).** Start the message with "QUESTION ONLY - do not create, change or run any
+  node". It answers from a node CATALOG: it knows which node fits and which options exist (after an HD Model the
+  low-poly is Retopology with bake; "Smart topology mesh" only builds from an IMAGE, not from a model; Segmentation
+  splits a model into parts but does not rig them; Rigging only has the ready-made humanoid skeletons, no extra bone
+  for a jaw / ear / skirt). It does NOT know prices, what the "DCC Bridge" button is, or where "Send to" goes.
+  Selecting a node while the panel is open ATTACHES the node to the message (a chip in the input): remove it with the
+  × for a general question. The input is the text line on top, not the button bar: if the click does not focus it,
+  the keystrokes go to the canvas.
+- **The Agent reaches parameters the node panel does not show** (texture: a TEXT prompt, quality standard / detailed /
+  extreme, alignment to the original image or to the geometry) — and does not reach the resolution. Test (20
+  credits): a texture by TEXT ("hand-painted miniature, soft painted shadows…, same colours as now") over the approved
+  model kept the mesh (17,208 faces) and **re-invented the character** (orange skin, black skirt, a moustache). A
+  texture by prompt is for a model with NO approved design; to enrich what already exists the way is the paint pass of
+  §3c, which only adds light derived from the HD sculpt itself.
+- **Checking the spend**: click the balance → "Subscription" → **Usage history** (date, type, amount, status). The
+  history belongs to the ACCOUNT: another session's spending shows up in the middle of yours. Close a character's bill
+  by type and time, not by the balance difference.
+- The canvas view JUMPS (selecting re-centres, opening a panel changes the zoom): one screenshot before each click; the
+  zoom % in the bottom-left corner has "Set zoom to 100%".
+
+Total cost of the healer in the Canvas: body 185 + two props 180 + the texture-by-text test 20 = **385 credits**.
+
+Not verified (do not treat as a rule): whether the Multi-view tab of the texture node really uses the 4 views (the
+Agent only ever built it with 1 image); what comes inside the rigged/animated GLB (bone names, fps) — those two nodes
+were not exported; direct Smart Mesh P2.0 on a body; the 4K / 8K buttons on the toolbar of a textured model.
 
 ## 3c. Enriching the texture in Blender: the PAINT pass (rig-safe, 2026-11-16)
 
@@ -318,7 +367,17 @@ Blender -b model/tex/paint/game_scratch.blend --python blender/paint_look.py -- 
 - Texture passes do not stack blindly: this one ALWAYS starts from `basecolor_orig.png`. `ao_bake.py` + `tex_grade.py`
   (AO in the character's .blend + emission of the cracks) is another pass over the same original; pick one as the
   base and apply the other on top only if the A/B asks for it.
-- **Where the pass stops today**: proven in a render A/B (scratch copies). The `basecolor_painted.png` has NOT yet
+- **Second character, straight from the Canvas' two GLBs (the healer, 2026-11-16)**: the three commands above ran
+  with no tuning — bake 85 s (1.9 M HD), `tex_paint` with 10.2 % edge texels and 6.6 % cavity texels. Gain read in the
+  A/B: wrinkles and volume in the face, the pleats of the skirt; at 64 px almost nothing, as on the brute. On the
+  props: censer 36 s of bake, 1.5 % edge (a smooth sphere: the gain is the top light and the occlusion under the rim
+  and the rivets); staff 53 s, **15.4 % edge** (wood grain: the highlight catches every fibre — if it sparkles in the
+  game, lower it to `edge=0.25`).
+- **A prop that spins takes no painted key light** (reasoning, no A/B yet): `tex_paint`'s light "from above" holds for
+  the rest pose. A censer on a pendulum (±30°) survives it; a weapon that passes over the head carries its light
+  upside down in the middle of the swing. For those paint only occlusion + cavity + edge:
+  `key_lo=0.9 key_hi=0.9 grad=0`.
+- **Where the pass stops today**: proven in a render A/B on two characters (scratch copies). The `basecolor_painted.png` has NOT yet
   gone through `export.py` → `to_unity.py` → Unity, and the `mini` shader exists only in `paint_look.py` (in Unity the
   body uses Standard — `character-engine` §2i). Before calling a character "painted", run that trip and judge it in
   the arena.

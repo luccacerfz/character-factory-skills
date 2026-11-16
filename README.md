@@ -76,6 +76,9 @@ Or copy `plugins/character-factory/skills/*` into your project's `.claude/skills
 - **Tripo's Agentic Canvas, measured on a full character:** retopology + bake + Smart UV in one 35-credit node, a
   T-pose template that redraws an approved concept, and the list of what the chat Agent gets wrong (parameters it
   silently changes, `#` read as a node reference, a rig it could not plan).
+- **Props, export and the Agent as a manual (Canvas, second round):** GPT Image 2.5 is hidden below the fold of the
+  model list, a prop costs 90 credits end to end, a non-native export arrives as `tripo_convert_<id>.glb`, and a
+  texture made from a text prompt re-invents an approved character — `character-design` §3b-2.
 
 ## Read this before using them
 

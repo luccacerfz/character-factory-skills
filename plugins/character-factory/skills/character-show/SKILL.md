@@ -322,6 +322,39 @@ advanced when the lab turns on (the previous duel ended between two calls): chec
 - Capture with the panel and the inset: `ScreenCapture.CaptureScreenshot` (the inset is a camera with a viewport, so it
   comes out in the screen capture; in an RT of the main camera it does NOT).
 
+### 9e. A healer's squad, seen from above (`CFSquadBuilder`: healer + 2 allies × 1 opponent)
+
+`CharacterFactory.EditorTools.CFSquadBuilder.Build("<HEALER>", "<ALLY_A>", "<ALLY_B>", "<OPPONENT>")` (menu
+*Character Factory ▸ Build Healer Squad*) → `Assets/Scenes/<HEALER>_Squad.unity`: the `Battle_Meadow` ground, a top
+camera and a `CFBattle` scripted as "heal the two allies, then attack the opponent over their heads". The request it
+came from: "like the video — two allies he heals and one opponent he then attacks, seen from above".
+- **A heal that is a cast** (`CFBattle.Profile`, everything off by default — no other scene changes): `healClip` (a
+  projectile clip that HEALS), `healAmount`, `healBelow` (only an ally under that share of health), `healRange`,
+  `healCooldown`, `healTurnDeg` (bearing of the heal's baked target off the heading: the healer turns the BODY until the
+  heal points at the ally — the `StrikeHeading` convention), `healAuraPrefix` + `healAuraBaked` (the baked aura is
+  carried whole to the ally) and `healChain` (a radius: ONE cast reaches the other hurt allies beside the first, 0.07 s
+  after each). The heal is decided BEFORE an attack target is picked and lands on the `land` event.
+- **The script is data** (`Entry`): `startHurt` (share of health already lost at the start) and `wait` (seconds idle
+  after the start). Allies hurt 0.58 / 0.42 wait for ONE heal (clip + 0.7 s = 2.40 s); the opponent opens fire at
+  0.4 s — it is what hurts them again. Measured: heals at 2.35 / 2.44 s, attacks from 3.3 s on (11 hits in 11 s), a
+  second heal at 10.75 / 10.84 s when an ally drops under 62 %.
+- **A camera that fits any window** (`CFFrameBox`): a box (centre, size) + a 68° pitch → it backs off until the 8
+  corners fit the frustum of the CURRENT aspect (the Game window was 1035×530). Call `Fit()` after changing
+  `targetTexture` and before `Render()`, and again after `ResetAspect()`.
+- **Never call `CFBattleBuilder.Save()` from another builder**: it DELETES and recreates the meadow meshes (new GUIDs
+  break `Battle_Meadow`). Another builder only LOADS `Assets/CharacterFactory/Battle/Meadow_*.asset / .mat`; a
+  material of its own is a copy (`Squad_Ground.mat`, darker: the effects are the light of the scene).
+- **Record to compare with a reference**: `./battle_rec.sh <id> 660 1 60` (11 s, every frame at 60 fps, ~4 min; it
+  enters Play and LEAVES it playing) → `characters/<id>/review/unity/squad/f_NNNN.jpg` + `log.txt`; sheets with
+  `cf/frames_sheet.py`. The reference video becomes a frame-by-frame sheet at the SAME fps: count the frames of each
+  phase on both sides (skill `character-engine` §2k) instead of comparing by eye.
+- The MCP's `execute_code` refuses C# with `System.IO.Directory.Delete` ("Blocked pattern detected") — and the wait
+  loop sat 4 minutes waiting for a recording that never started. Clean folders in the shell, and exit when the call
+  does not return what you expect.
+- An effect "huge in a corner of the screen" after a few seconds is an effect bone far away, not a shader: probe every
+  visible `Fx*` bone of every unit at a few frames (cause and fix: `character-engine` §2k).
+- The cast's effects (ribbon, burst, bubble) are drawn by the engine: `character-engine` §2k.
+
 ## Hunter with a dash against the dummy (UIVO + TOCO)
 
 `CFImporter.BuildHunt("Assets/Characters/<HOST>", "Assets/Characters/TOCO")` → `Assets/Scenes/<HOST>_Hunt.unity` with

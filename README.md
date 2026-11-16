@@ -88,6 +88,11 @@ Or copy `plugins/character-factory/skills/*` into your project's `.claude/skills
   their own LOD1; plus a painted-miniature shader in Unity driven by the manifest, and a healer's training round
   (heal the ally first, then attack the dummy). See `character-design` §3d, `character-rig` §4h,
   `character-clips` §2i, `character-engine` §2j.
+- **A cast the engine draws, and a healer's squad round:** a projectile baked at 30 fps is loose blobs at the game
+  camera — a ribbon from the hand to the target on every screen frame, a burst where it lands, a heal bubble that
+  jumps to the second ally; frame counts read off a reference-video sheet, additive light that vanishes on a bright
+  floor, an offset that accumulates on bones no clip moves, and a heal rule that is data (one cast, two allies, then
+  the attack). See `character-engine` §2k, `character-show` §9e.
 - **The paint pass as code:** the three scripts behind `character-design` §3c (bake the sculpt's occlusion / curvature
   onto the game UV, paint the light into the albedo, A/B it under a fixed rig) ship in
   `plugins/character-factory/skills/character-design/scripts/`.

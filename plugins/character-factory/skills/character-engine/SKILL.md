@@ -463,6 +463,46 @@ A study of Tripo + the user's reference (a collectible mini on a card screen). T
   `cam.ResetAspect()`; for a close-up, change the camera's position / FOV, capture and put it back. Sampling a clip
   without Play: `clip.SampleAnimation(object, t)` (it dirties the scene — do not save).
 
+## 2k. A cast drawn by the ENGINE: ribbon, burst, heal bubble (`CFCastFx` / `CFFx`; the healer in the Squad scene)
+
+The request it came from: "this attack VFX has to be more fluid… the attack and the heal much like the video".
+- **A baked projectile does not read at the game camera**: effect bones keyed at 30 fps (a head + a tail that cross
+  the field in 5 frames) are 2–3 loose blobs from above at 60 Hz. What reads is a continuous RIBBON from the hand to
+  the target on every frame of the screen. `Profile.streakFx` → `CFBattle.Register` puts a `CFCastFx` on the caster
+  (one `Cast` per `shots[]`; the `healClip` one is a heal): on the fire event (`hit`) the ribbon is born where the
+  baked head was (glued to the nearest body bone: it follows the hand's follow-through), aims at
+  `CFProjectileRetarget.target` every frame and lands on the `land` event. The baked renderer (`<NAME>_<Fx>`) is
+  hidden from the fire event to the end of the clip; its charge in the hand, before that, stays.
+- **The anatomy, measured on the reference video (a 60 fps sheet)** — count frames, do not "feel":
+  attack = the hand flares ~3 frames → the ribbon extends in ~3 → stays tied ~3, waving → goes from the tail in ~2; a
+  star on the target and the target flashes. Heal = ribbon ~4 frames → bubble on the 1st ally → jumps to the 2nd 2
+  frames later → a thin line for ~0.13 s → the bubbles hold and fade; ~0.6 s in all. Our approved round: 4–5 of travel,
+  tied until `land` (10 frames after the fire event), 3 of fade = 14 frames against ~8.
+- **Ribbon** (`CFStreak`): LineRenderers over the SAME ~30 points; width by a curve (thin at the hand, fat near the
+  head, a point); the wave = travelling sines × an envelope sin(πs)^0.7, zero at both ends (it leaves the hand and
+  reaches the target on the line). `Mathf.Pow(Mathf.Sin(Mathf.PI * s), 0.7f)` is NaN at s = 1 (sin π = −8.7e-8):
+  `Mathf.Max(0, …)`. The symptom was "Invalid worldAABB / Invalid localAABB" in the console, not a script error.
+- **Additive light disappears on a bright floor**: orange added to a sunlit meadow = a pale pink-yellow; a green heal
+  on grass = invisible. The ribbon's body and the rings in ALPHA (`CharacterFactory/FxAlpha`, the twin of
+  `FxAdditive`) under the additive core; the heal in cyan; the scene's own darker ground. Bloom only on what is hot
+  (threshold 1.1, 0.32).
+- **Heal bubble** (`CharacterFactory/FxBubble` + `CFBubble`): a sphere in 2 passes — glass in alpha (the colour stays)
+  + a fresnel rim and turning crescents in additive; it follows the unit (grows 0.11 s, holds 0.30, fades 0.32), a
+  four-point glint in its middle, '+' rising, a ring on the ground. Colour / alpha / spin by `MaterialPropertyBlock`.
+- **Sprites without an object per blow** (`CFFx.Emit`): ONE ParticleSystem per kind (glow, flash, ring, spark, plus),
+  procedural textures, particles emitted by hand (`EmitParams`: position, velocity, colour, size, life). Pooled ribbons.
+- **An offset that ACCUMULATES on an effect bone**: the Animator rewrites a bone's position only if SOME clip animates
+  it. `CFProjectileRetarget` added its offset every LateUpdate: OCASO's hex mark (a bone that only SCALES) climbed
+  3.49 m — a huge green ring near the camera at ~10 s — and the heal aura carried to the ally was 60 m away by the 3rd
+  heal. The fix (in both): keep the local position from before the move and the one written; next frame, if the bone
+  is still where it was written (nobody rewrote it), put it back before moving it again. Checked on the recording (2nd
+  heal: the aura under the ally, no stray ring).
+- **A further pass is compiled and NOT captured** (the user approved the round above and asked for Unity back): a
+  four-layer ribbon (dark fringe + alpha body + glow + core), the ribbon leaves late so it ARRIVES on `land` (the hand
+  flares first), embers off the ribbon, a flash on the target's body (`CFFlash`: a `FxFlash` material appended to
+  `sharedMaterials` — a mesh of one submesh is drawn again — with the colour in a `MaterialPropertyBlock`, the same
+  trick as `CFStunFx`'s rim), a smaller, shorter bubble. Record it (skill `character-show` §9e) before trusting it.
+
 ## 3. What the engine doesn't fix
 
 A trigger on the wrong foot still drags 23–30 cm without a transition clip: that is a declared limit, not an importer

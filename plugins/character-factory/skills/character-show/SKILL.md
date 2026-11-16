@@ -164,7 +164,7 @@ Transform + `CFTraining`). Import the unit and the target BEFORE the host.
   (another character's prefab, standing) on the heal's baked target — local `(−left, 0, forward)` = `(−1.0, 0, 1.5)` —
   facing the dummy, and the camera behind the RIGHT shoulder (with the default, behind the left, the ally hides the
   dummy). A slow walker: `stopLead` 0.02 (with 0.18 a 0.25 m/s walk stopped 17 cm short of the spot) and a short patrol
-  (`{(0, −0.9), (0, 0)}`). Probe, 25 s: heal at 3.8 s, coals at 7.0 / 9.2 / 13.6 / 15.9 s, the dummy dies at 15.9 and
+  (`{(0, −0.9), (0, 0)}`). Probe, 25 s: the heal starts at 3.5 s and lands on the ally at ~4.4 s, coals at 7.0 / 9.2 / 13.6 / 15.9 s, the dummy dies at 15.9 and
   is back at 18.7; support foot 0.0 mean / 0.18 cm per 1/30 s at the peak. Limits: the ally is scenery (nobody reads
   its health), the heal's `land` still calls `target.Hit` with zeros, and the baked flights are not re-aimed.
 

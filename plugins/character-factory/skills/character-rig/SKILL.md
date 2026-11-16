@@ -242,6 +242,57 @@ only the points beyond the edge left the backward fall stuck at 90° with the ba
 - `blender/quad_pose_test.py --arg name=<NAME>`: poses A tucked, B extended, C bite, D howl, E turn → edge stretch
   p99 / max, vertices > 2.2×, lowest point (UIVO: p99 1.5–2.1).
 
+## 4g. A model from the Agentic Canvas, a floor-length skirt, a hanging prop and TWO Blenders (the healer, 2026-11-16)
+
+First character rigged from a GLB made in Tripo's Agentic Canvas (HD model → Retopology with bake, 17,180 tris, ONE
+island). Clean in its own poses on the second assembly.
+
+- **Two Blenders, one per character.** The user may have another character open in the live Blender (port 9876) and
+  `stage.py` WIPES the scene. Do not swap their scene: open a second Blender with a script that sets
+  `scene.blendermcp_port = 9877` and calls `bpy.ops.blendermcp.start_server()` (inside a `bpy.app.timers` callback that
+  retries until the addon exists; the addon's auto-start is skipped when 9876 is already taken) and run EVERY factory
+  command with `export BLENDER_PORT=9877` (`bl.py` and `rebuild_rig.sh` read the variable). A guard before any
+  `stage.py`: `bl.py code "import bpy; assert '<other character>' not in bpy.data.filepath"`. Never use the Blender MCP
+  tools meanwhile: they talk to the live instance. At the end, `save_as_mainfile` to `characters/<id>/<id>.blend`.
+- **`gameready.py --arg bake=false --arg tris=20000`** on a Canvas model: it arrives retopologised, with UVs and the
+  texture on its own UV. `--arg tris` is only a ceiling (17,208 → 17,180, 1 piece of debris removed).
+- **The Canvas "T pose" template gives PALMS DOWN** (thumb forward and down). The rig reads the palm from the thumb: only
+  the thumb landmarks change. Thumb = PCA of the lobe that hangs (hand vertices below the palm and in front of it):
+  base at ⅓ of the axis, middle at the centroid, tip at the far end.
+- **Floor-length skirt with no legs inside** (the skin ends at z 0.16; only the feet exist): the legs are HIDDEN chains
+  (thigh from the belt to an invented knee, shin to the real ankle). `limit thigh_under_belt` with a long ramp
+  (`[0.34, 0.50]`), the sole's `keep_only` restricted to the foot's own FOOTPRINT (the hem points around it stay
+  skirt), a short `prune` for `foot` / `toe` (0.15 / 0.12) and NO `prune` for `shin` (the shin must hold a hem 30 cm
+  from its axis). The `tabard_f` / `tabard_b` chains take the front and back panels with a wide `fade_x`
+  (`[0.04, 0.17]`, `soft_passes 6`). A step 14 cm forward and 7 cm up: 0 stretched edges.
+- **A colour class that includes "dark" catches creases.** The collar of black beads was pinned to the chest by colour
+  (`v < 0.24` or ivory); the dark CREASE under the chin passed the same test and was pinned to the chest right against
+  jaw vertices: 22 edges 23 → 73 mm with the head turned (`stretch_why.py`: pair `DEF-jaw | DEF-spine.003`). Fix: the
+  colour region's box ends BEFORE the crease (centre up to z 0.745; the big side beads in boxes of their own) and the
+  jaw becomes two boxes (front of the chin all the way down; the sides only from z 0.775 up), so the crease keeps the
+  automatic weights + `neck_not_chest`. Pose B: 44 → 7 edges.
+- **The head must not hold the trapezius**: the head's lower box starts above the top of the shoulders (0.825 with
+  shoulders at 0.80) with a short `feather` (0.012). At 0.81 / 0.025 the head held 0.21–0.27 of the trapezius tops.
+- **A staff with a hook: `long_axis`.** A "?" hook pulls the SVD axis off the shaft and the staff's foot reads 17–21 cm
+  of radius. `prop_blade.py --arg profile=staff --arg 'long_axis=[0,0,1]'` (and the key `weapon.long_axis` in the
+  landmarks). A generated shaft 10 cm thick → `thin [0.62, 0.66, 0.74]` (radius at the fist 57.7 → 33.6 mm; whatever is
+  below 0.66 of the length thins with it, the knob at the foot included).
+- **A HANGING prop with a pivot of its own** (a censer under the hook): an entry in `props` on the bone that carries it
+  (`DEF-weapon`) + `"own_bone": "DEF-censer"` + **`"own_bone_rest": {"head": [hook], "tail": [below]}`**.
+  `prop_own_bone.py` takes optional `head` / `tail`: the own bone is born a child of the carrier but with its head at
+  the point the prop swings about. The prop is skinned 100 % to that bone, so moving the bone's REST moves nothing on
+  screen; with no keys it follows the staff. Test: 28° on the bone and the top link stays on the hook. List the bone in
+  `prop_bones`. Measure the hook on the mesh AFTER the first `rebuild_rig.sh` (that is when the staff gets its rest
+  place) and only then write the box.
+- **A gate that fails on purpose is declared**: `overhead` 0.724 (arm 0.40 m, head ⅓ of the height). It goes in the
+  landmarks' `_doc`, poses A and D of the test are read as "outside the design", and the character gets ITS poses in
+  `pose_test.poses` (staff planted + healing hand, bow, step) with `follow: 1.0`.
+- **Budget closed at 48**: base 29 + mitten 8 + topknot 2 + jaw 1 + flaps 4 + eyes 2 + staff 1 + censer 1. The ears
+  stayed rigid on the head: no room for them, and at 64 px they do not read.
+- **Not verified on this character**: the fist on the handle (`grip` copied, no `fist_fit` — the blade route does not
+  run it), the carry pose (`onehand` is a guess), springs, `contact_probe` / `skin_fold`, and the painted texture
+  (skill `character-design` §3c) is not on the scene's materials yet.
+
 ## 5. Look and measure — only then say it is clean
 
 1. `pose_test.py` (independent of the bind pose) and its shoulder close-ups. The eye sees LENGTH: read

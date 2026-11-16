@@ -79,6 +79,9 @@ Or copy `plugins/character-factory/skills/*` into your project's `.claude/skills
 - **Props, export and the Agent as a manual (Canvas, second round):** GPT Image 2.5 is hidden below the fold of the
   model list, a prop costs 90 credits end to end, a non-native export arrives as `tripo_convert_<id>.glb`, and a
   texture made from a text prompt re-invents an approved character — `character-design` §3b-2.
+- **Rigging a Canvas model without touching the artist's open scene:** a second Blender on its own bridge port, hidden
+  leg chains under a floor-length skirt, a hanging prop on a bone whose pivot is the hook it hangs from, and why a
+  "dark" colour class pinned a chin crease to the chest — `character-rig` §4g.
 
 ## Read this before using them
 

@@ -345,6 +345,10 @@ Blender -b --factory-startup --python blender/paint_bake.py -- model/<id>_hi.glb
 Blender -b model/tex/paint/game_scratch.blend --python blender/paint_look.py -- <albedo.png> <prefix> mini   # A/B
 ```
 
+The three scripts ship with this skill, self-contained (stdlib + `bpy` / `numpy`; `tex_paint.py` also needs Pillow and
+SciPy): `scripts/paint_bake.py`, `scripts/tex_paint.py`, `scripts/paint_look.py`. In the factory they live in `blender/`
+and `cf/` (the paths the commands above use); from a checkout of this plugin, point the same commands at `scripts/`.
+
 - `paint_bake.py` (BACKGROUND Blender, it does not touch the live session; 58 s including the 2 M import): fine AO (3 %
   of the height) and broad AO (30 %), an OBJECT-space normal, and a map with fine curvature (R), broad curvature (G)
   and height (B) — the curvature is computed with numpy on the HD vertices (position − smoothed position, projected

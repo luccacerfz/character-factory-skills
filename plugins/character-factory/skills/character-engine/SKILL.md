@@ -410,6 +410,32 @@ Scene: `CFSpellBuilder.BuildSpell(host, unit, spots, stun, hold, pinFx, casts, k
 - **A line of code swallowed by a comment**: `... // comment ... _light.enabled = false;` on a single line — the
   compiler doesn't complain, and every unit carried a lit light from `Awake` on.
 
+## 2i. Texture, material and the mini look: what weighs and what is missing (2026-11-16)
+
+A study of Tripo + the user's reference (a collectible mini on a card screen). The detail is in `character-design`
+§3a–§3c; this is the engine's part.
+- **Texture size is already decided at import**: `CFImporter.Tex` sets `maxTextureSize = 2048`, mipmaps and aniso 4 on
+  every character map. Generating at 8K in Tripo does not change one pixel of the game. Measured on a brute's 4K
+  albedo: 2K loses 0.40/255 on average (PSNR 49.2 dB) and 1K loses 0.74/255 (43.0 dB) — for the game camera (character
+  ≈ 64 px) 1K is more than enough; 2K is for the close-up / Portrait. If memory gets tight on a phone, lower
+  `maxTextureSize` per platform before touching the mesh.
+- **Character FPS** is won with: 1 material per body (Tripo already delivers 1 atlas), bones within the budget
+  (`character-rig`), LOD1 for the squad (`lod.py`), additive effects with no shadow. Texture resolution costs MEMORY,
+  not frames — and the 2 M HD mesh never enters Unity (it is only a bake source).
+- **The body uses Standard** (`Shader.Find(srp ? "Universal Render Pipeline/Lit" : "Standard")`). The look of the
+  reference asks for three things Standard does not give by itself: paint that does not fall to black in the shadow
+  (part of the colour unlit), wrapped light and a cool rim on the silhouette. `blender/paint_look.py` has that shader
+  as a rehearsal (`mini`: 60 % unlit albedo + 40 % lit + a rim from the GEOMETRY normal — through the normal map the
+  rim scratches white lines on the inner edges). **In Unity it does NOT exist yet**: the candidate is a
+  `CharacterFactory/Mini` (Built-in, 1 pass, no extra texture cost) switched on in `CFImporter` by an option in the
+  manifest. Until then the gain comes from the painted albedo (`cf/tex_paint.py`), which works with Standard — in the
+  brute's A/B (the `lit` render of `paint_look.py`, a Principled that imitates Standard) the painted one already reads
+  better than the original: face, cracks and muscles.
+- The painted albedo goes in the usual way (the body material's image in the .blend → `export.py` → `to_unity.py`
+  writes `<Mat>_basecolor.png`). That trip with the painted albedo has not been run yet: check the character in the
+  arena (the lab, G + V) after it, because the painted light ADDS to the scene light — if the body gets too dark
+  under Standard, lower `ao_broad` / `key_lo` in `tex_paint.py` instead of raising the scene light.
+
 ## 3. What the engine doesn't fix
 
 A trigger on the wrong foot still drags 23–30 cm without a transition clip: that is a declared limit, not an importer

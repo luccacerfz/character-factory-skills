@@ -28,7 +28,7 @@ problem that stage 1 or 3 showed in seconds.
 | # | Stage | Skill | Exit gate (a number, not an impression) |
 |---|---|---|---|
 | 1 | Brief + a design that fits the animation AND reads in the game | `character-design` | one-page brief with Essence (1–2 traits), Readability and Close-up; silhouette at 64 px checked; generation rules; left/right marker |
-| 2 | T-pose concept (MOUTH OPEN) + 3D model + **Remesh 60k → Smart UV → Texture** in Tripo + separate props | `character-design` §3 6b–6c | real T-pose, empty hands, open jaw, props off the body; `model/<id>_hi.glb` + `model/<id>_game.glb` (clean UV); up to 5,000 Tripo credits per character |
+| 2 | T-pose concept (MOUTH OPEN) + 3D model + **Remesh (Smart Mesh P1.0 ALWAYS on, body 20k) → Smart UV → 4K Texture** in Tripo (the workspace, or the Agentic Canvas with retopology + bake + Smart UV in one node: §3b) + separate props + the **paint pass** of the albedo in Blender (§3c) | `character-design` §3 6b–6c, §3a–§3c | real T-pose, empty hands, open jaw, props off the body; `model/<id>_hi.glb` + `model/<id>_game.glb` (clean UV); NEVER 8K (§3a); A/B original vs painted in `paint_look.py`; up to 5,000 Tripo credits per character |
 | 3 | Import, game mesh, landmarks, **model gates** | `character-rig` | `model_gates.py`: `overhead`, `corridor` ≥ 1 (and `wrap` after the rig) |
 | 4 | Rig (Rigify), weights, props, pose test | `character-rig` | `pose_test.py` + clean shoulder/wrist/hip close-ups; `fist_fit` read; with separate fingers, `hand_test.py` inspected up close |
 | 5 | Base pose + attack | `character-clips` | attack closes without `twist_jumps`; `contact_probe` without penetration |

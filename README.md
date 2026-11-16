@@ -67,6 +67,15 @@ Or copy `plugins/character-factory/skills/*` into your project's `.claude/skills
   Ray".
 - **A split-screen 60 fps reel:** every character runs on one schedule, with one layer and one render texture per
   panel (`CFSplitReel`).
+- **What texture resolution buys (never 8K):** a 4K Tripo albedo in this style holds ≤ 2K of information (shrink to 2K
+  and back: PSNR 49 dB, 68 % of the texels are flat colour), and the Unity importer caps every map at 2K anyway. The
+  "detail" of a collectible mini is chunky modelled shape + shading painted into the albedo + the shader's rim.
+- **A paint pass for the albedo, rig-safe:** bake fine and broad AO, an object-space normal and curvature from the 2 M
+  HD mesh onto the game mesh's UV, then paint light into the colour in linear space (wrapped key, cavity lines, edge
+  highlights, cool saturated shadows). The formula and the defaults are in `character-design` §3c.
+- **Tripo's Agentic Canvas, measured on a full character:** retopology + bake + Smart UV in one 35-credit node, a
+  T-pose template that redraws an approved concept, and the list of what the chat Agent gets wrong (parameters it
+  silently changes, `#` read as a node reference, a rig it could not plan).
 
 ## Read this before using them
 

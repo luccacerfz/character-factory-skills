@@ -38,6 +38,9 @@ problem that stage 1 or 3 showed in seconds.
 | 9 | (if any) characters together: summoning, target, round | `character-show` | show playing in the viewport; planted foot ≤ 0.1 cm/frame on a curve; target ≤ 5 mm on the ground; the same routine measured in Unity (`CFRoundProbe`) |
 | 10 | Lab in Unity: the unit at game size and in the game camera, against the others | `character-show` §9d | `CFDuelLab` routine run: hit-stop frame = contact, clean 3-state death, on-screen height + 1:1 silhouette, Portrait; blends saved in `<NAME>.blend_tune.json` if they changed |
 
+For a new painted collectible, or when a render looks plastic, use the [painted matte miniature workflow](../character-design/references/painted-miniatures.md).
+It links the concept and bake to Blender material checks, game-size poses, and Unity Play Mode evidence.
+
 The user's eye is the final gate: when they say the character is approved, stop iterating with critics and
 record that in `state.json`. The critics' score is for finding defects, not for arguing with whoever approved it.
 

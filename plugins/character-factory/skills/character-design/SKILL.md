@@ -334,10 +334,10 @@ were not exported; direct Smart Mesh P2.0 on a body; the 4K / 8K buttons on the 
 
 ## 3c. Enriching the texture in Blender: the PAINT pass (rig-safe, 2026-11-16)
 
-Tripo's albedo with "remove lighting" is flat colour (which is what we want as a base) — and that is why the character
-comes out looking like plastic: it lacks the light a miniature painter puts into the paint. The pass bakes from the HD
-what the painter needs and paints the albedo on the SAME UV (mesh, weights and normal map untouched; it works on a
-character that is already rigged and animated).
+Start with the delit albedo. A flat base can lack painted form, and raw metallic or specular maps under bright studio
+lights can wash out the colour. Use the [painted matte miniature guide](references/painted-miniatures.md) to isolate
+the cause and carry the finish into Unity. The bake samples the HD sculpt and paints on the same game UVs, so it also
+works with an existing rig and animations.
 
 ```
 Blender -b --factory-startup --python blender/paint_bake.py -- model/<id>_hi.glb model/<id>_game.glb model/tex/paint 2048

@@ -430,10 +430,12 @@ A study of Tripo + the user's reference (a collectible mini on a card screen). T
   switched on per material in the manifest (§2j). The painted albedo (`cf/tex_paint.py`) still pays off with Standard —
   in the brute's A/B (the `lit` render of `paint_look.py`, a Principled that imitates Standard) the painted one already
   reads better than the original: face, cracks and muscles.
-- The painted albedo goes in the usual way (the body material's image in the .blend → `export.py` → `to_unity.py`
-  writes `<Mat>_basecolor.png`). That trip with the painted albedo has not been run yet: check the character in the
-  arena (the lab, G + V) after it, because the painted light ADDS to the scene light — if the body gets too dark
-  under Standard, lower `ao_broad` / `key_lo` in `tex_paint.py` instead of raising the scene light.
+- The painted albedo goes from the body material in Blender through `export.py` and `to_unity.py` into
+  `<Mat>_basecolor.png`. The Warden verified this path under Built-in Standard in Play Mode with shared paint,
+  zero metallic, a 0.88 roughness floor, specular highlights and glossy reflections disabled, and 0.35 normal strength.
+  Confirm the material on the prefab as well as texture import. Adjust the paint pass if creases or shadows become too
+  strong under scene lighting. Capture a close-up plus the Game camera and LOD transitions after import.
+  See the [painted matte miniature guide](../character-design/references/painted-miniatures.md) for the diagnosis and checks.
 
 ## 2j. The mini look IN Unity, garments as worn props and Unity without a session tool (the healer v2)
 
